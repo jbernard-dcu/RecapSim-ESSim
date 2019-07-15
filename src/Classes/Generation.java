@@ -114,7 +114,7 @@ public final class Generation {
 			shardBase.get(indexShard).setPrimaryShard(indexShard % (NB_REPLICAS + 1) == 0);
 		}
 
-		System.out.println("Shardbase generated:" + (System.currentTimeMillis() - startTime));
+		System.out.println("Shardbase generated:" + (System.currentTimeMillis() - startTime)+"ms");
 
 		return shardBase;
 	}
@@ -156,7 +156,7 @@ public final class Generation {
 
 		}
 
-		System.out.println("Database generated:" + (System.currentTimeMillis() - startTime));
+		System.out.println("Database generated:" + (System.currentTimeMillis() - startTime)+"ms");
 
 		return database;
 	}
@@ -167,7 +167,7 @@ public final class Generation {
 	 * Change (for now) this method to change workload distributions
 	 */
 	public static Workload GenerateSyntheticWorkload(TreeMap<Long, Double> termDist, int NB_TERMSET, int NB_REQUEST,
-			ApplicationLandscape appLandscape) {
+			ApplicationLandscape appLandscape, List<Shard> shardBase) {
 
 		long startTime = System.currentTimeMillis();
 
@@ -211,6 +211,7 @@ public final class Generation {
 				space += (int) exp.sample();
 			}
 		}
+		
 
 		/*
 		 * Creation of Requests
@@ -222,6 +223,23 @@ public final class Generation {
 		for (Request.Builder request : buildersRequests) {
 			request.setTime(timeSequence.get(i)-startTime);
 			request.setApplicationId(appLandscape.getApplicationsList().get(0).getApplicationId());
+			
+			/*
+			 * Data nodes destinations for the request
+			 */
+			List<Long> searchContent = Launcher.unparse(request.getSearchContent());
+			List<Shard> shardDist = new ArrayList<Shard>();
+			for(long word:searchContent) {
+				for(Shard shard:shardBase) {
+					if(shard.isPrimaryShard()&&shard.getInvertedIndex().containsKey(word)&&!shardDist.contains(shard))
+						shardDist.add(shard);	
+				}
+			}
+			for(Shard dest:shardDist) {
+				// nodeId = "x_1", counting starts at 1
+				//TODO
+				request.addDataNodes(1+Integer.valueOf(dest.getNode().getId().substring(2))); 
+			}
 
 			requests.add(request.build());
 
@@ -257,7 +275,7 @@ public final class Generation {
 			workloadBuilder.addDevices(device);
 		}
 
-		System.out.println("Workload generated:" + (System.currentTimeMillis() - startTime));
+		System.out.println("Workload generated:" + (System.currentTimeMillis() - startTime)+"ms");
 
 		return workloadBuilder.build();
 	}
@@ -434,7 +452,7 @@ public final class Generation {
 
 		}
 
-		System.out.println("ApplicationLandscape generated:" + (System.currentTimeMillis() - startTime));
+		System.out.println("ApplicationLandscape generated:" + (System.currentTimeMillis() - startTime)+"ms");
 
 		return applicationLandscapeBuilder.build();
 	}
@@ -519,7 +537,7 @@ public final class Generation {
 
 		infrastructure.addLinks(link.build());
 
-		System.out.println("Infrastructure generated:" + (System.currentTimeMillis() - startTime));
+		System.out.println("Infrastructure generated:" + (System.currentTimeMillis() - startTime)+"ms");
 
 		return infrastructure.build();
 

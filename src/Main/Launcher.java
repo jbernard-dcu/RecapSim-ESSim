@@ -76,13 +76,10 @@ public class Launcher {
 
 		for (Document doc : data) {
 			int index = (doc.getID() % NB_PRIMARYSHARDS) * (NB_REPLICAS + 1);
-
-			for (int sr = 0; sr <= NB_REPLICAS; sr++) {
-				shardBase.get(index + sr).addDocument(doc);
-			}
-
+			shardBase.get(index).addDocument(doc);
 		}
-		System.out.println("Routing done:" + (System.currentTimeMillis() - startTime));
+
+		System.out.println("Routing done:" + (System.currentTimeMillis() - startTime)+"ms");
 
 		///////////////////////////////////////////////////////////////////////////////////////////////
 		/////////////////// APPLICATION MODEL
@@ -116,9 +113,9 @@ public class Launcher {
 		/////////////////// EXPERIMENT CONFIGURATION
 		///////////////////////////////////////////////////////////////////////////////////////////////
 
-		// Workload workload = TxtReader.GenerateWorkload(3, writeOrRead.R,
-		// appLandscape); //Working
-		Workload workload = Generation.GenerateSyntheticWorkload(termDist, NB_TERMSET, NB_REQUEST, appLandscape);
+		
+		//Workload workload = TxtReader.GenerateWorkload(3, writeOrRead.R, appLandscape); // Working
+		Workload workload = Generation.GenerateSyntheticWorkload(termDist, NB_TERMSET, NB_REQUEST, appLandscape,shardBase);
 
 		Experiment.Builder configBuilder = Experiment.newBuilder();
 		configBuilder.setName("General config");
@@ -226,8 +223,6 @@ public class Launcher {
 	 * Creates a formatted String giving the contents of a Request. </br>
 	 * Change this method to change the format of the String.</br>
 	 * Change proto file of WorkloadModel to change type of request content. </br>
-	 * 
-	 * TODO format : "1+23+5+..."
 	 */
 	public static String randQueryContent(TreeMap<Long, Double> termDist, int nbWord) {
 		// Creating distribution

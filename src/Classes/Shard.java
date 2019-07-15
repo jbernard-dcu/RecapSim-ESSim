@@ -7,6 +7,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.TreeMap;
 
+import Main.Launcher;
 import eu.recap.sim.models.InfrastructureModel.Node;
 import eu.recap.sim.models.WorkloadModel.Request;
 
@@ -32,22 +33,32 @@ public class Shard {
 	 * adds the document <code>doc</code> to the <code>invertedIndex</code>
 	 */
 	public void addDocument(Document doc) {
-		for (long word : doc.getContent()) {
-			if (invertedIndex.containsKey(word)&&!invertedIndex.get(word).contains(doc)) {
-				invertedIndex.get(word).add(doc);
-			} else {
-				List<Document> neu = new ArrayList<Document>();
-				neu.add(doc);
-				invertedIndex.put(word, neu);
+		if (this.isPrimaryShard()) {
+			for (long word : doc.getContent()) {
+				if (invertedIndex.containsKey(word) && !invertedIndex.get(word).contains(doc)) {
+					invertedIndex.get(word).add(doc);
+				} else {
+					List<Document> neu = new ArrayList<Document>();
+					neu.add(doc);
+					invertedIndex.put(word, neu);
+				}
 			}
+			for (Shard replica : this.replicationGroup) {
+				if (!replica.equals(this)) {
+					replica.setInvertedIndex(this.getInvertedIndex());
+				}
+			}
+		} else {
+			throw new IllegalArgumentException("ERROR : Can't add a document to a non-primary shard");
 		}
+
 	}
-	
+
 	/*
-	 * TODO fix the 1 document results and finish
-	 * Problem --> deal with infinity !!
+	 * TODO fix the 1 document results and finish Problem --> deal with infinity !!
 	 */
-	public TreeMap<Double, Document> fetchResults(Request request, List<Shard> shardbase, double p_Doc) throws Exception {
+	public TreeMap<Double, Document> fetchResults(Request request, List<Shard> shardbase, double p_Doc)
+			throws Exception {
 		List<Long> searchContent = unparse(request.getSearchContent());
 		HashSet<Document> res = new HashSet<Document>();
 
@@ -57,29 +68,30 @@ public class Shard {
 				res.addAll(this.invertedIndex.get(word));
 			}
 		}
-		
-		//Calculating size of the shard level database
-		int sldbSize=0;
-		for(long key:this.invertedIndex.keySet()) {
-			sldbSize+=this.invertedIndex.get(key).size();
+
+		// Calculating size of the shard level database
+		int sldbSize = 0;
+		for (long key : this.invertedIndex.keySet()) {
+			sldbSize += this.invertedIndex.get(key).size();
 		}
-		
-		//Sorting res according to score
-		TreeMap<Double,Document> mapScores=new TreeMap<Double,Document>();
-		for(Document doc:res) {
-			mapScores.put(doc.getScoreRequest(request, shardbase, sldbSize),doc);
+
+		// Sorting res according to score
+		TreeMap<Double, Document> mapScores = new TreeMap<Double, Document>();
+		for (Document doc : res) {
+			mapScores.put(doc.getScoreRequest(request, shardbase, sldbSize), doc);
 		}
-		
-		Collection<Document> rep=mapScores.values();
-		
+
+		Collection<Document> rep = mapScores.values();
+
 		System.out.println(rep.toString());
-		System.out.println("sldb size:"+sldbSize);
-		System.out.println("start:"+(int)((1-p_Doc)*rep.size())+"; size/end:"+rep.size());
-		
-		//return new ArrayList<Document>(rep).subList((int)((1-p_Doc)*rep.size()), rep.size());
-		
+		System.out.println("sldb size:" + sldbSize);
+		System.out.println("start:" + (int) ((1 - p_Doc) * rep.size()) + "; size/end:" + rep.size());
+
+		// return new ArrayList<Document>(rep).subList((int)((1-p_Doc)*rep.size()),
+		// rep.size());
+
 		return mapScores;
-		
+
 	}
 
 	/**
@@ -97,7 +109,6 @@ public class Shard {
 		}
 		return res;
 	}
-	
 
 	///////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////// OTHER METHODS, GETTERS, SETTERS
@@ -108,10 +119,14 @@ public class Shard {
 		return Integer.toString(this.getId());
 	}
 
-	public HashMap<Long,List<Document>> getInvertedIndex(){
+	public HashMap<Long, List<Document>> getInvertedIndex() {
 		return this.invertedIndex;
 	}
-	
+
+	public void setInvertedIndex(HashMap<Long, List<Document>> ii) {
+		this.invertedIndex = ii;
+	}
+
 	public Node getNode() {
 		return node;
 	}
