@@ -7,7 +7,7 @@ import java.util.TreeMap;
 
 import Distribution.FreqD;
 import Distribution.ExpD;
-import Main.WorkloadTest;
+import Main.Launcher;
 import eu.recap.sim.models.ApplicationModel.Application;
 import eu.recap.sim.models.ApplicationModel.ApplicationLandscape;
 import eu.recap.sim.models.ApplicationModel.Deployment;
@@ -146,7 +146,7 @@ public final class Generation {
 		for (int doc = 0; doc < NB_DOCS; doc++) {
 
 			// adding content in the document
-			nbWord = WorkloadTest.randGint(AVG_NWDOC, STD_NWDOC);
+			nbWord = Launcher.randGint(AVG_NWDOC, STD_NWDOC);
 			docContent = new ArrayList<Long>();
 			for (int word = 0; word < nbWord; word++) {
 				docContent.add(wordDist.sample());
@@ -177,7 +177,7 @@ public final class Generation {
 		List<Long> timeSequence = new ArrayList<Long>();
 		timeSequence.add(startTime);
 		for (int rang = 1; rang < NB_TERMSET; rang++) {
-			timeSequence.add(timeSequence.get(rang - 1) + WorkloadTest.getNextTime());
+			timeSequence.add(timeSequence.get(rang - 1) + Launcher.getNextTime());
 		}
 
 		/*
@@ -215,7 +215,7 @@ public final class Generation {
 		/*
 		 * Creation of Requests
 		 */
-		List<Request.Builder> buildersRequests = WorkloadTest.buildersRequests(termDist);
+		List<Request.Builder> buildersRequests = Launcher.buildersRequests(termDist);
 		List<Request> requests = new ArrayList<Request>();
 		int i = 0;
 		for (Request.Builder request : buildersRequests) {

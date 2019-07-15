@@ -134,7 +134,7 @@ public class TxtReader {
 			
 			SpecRequest spec=(SpecRequest)(validRequest.get(4).get(request));
 			
-			requestBuilder.setTime((long)validRequest.get(0).get(request))
+			requestBuilder.setTime(new Long(validRequest.get(0).get(request).toString()))
 						  .setRequestId(request)
 						  .setApplicationId(appLandscape.getApplications(0).getApplicationId()) // TODO generalize with multiple applications
 						  .setComponentId("1")
@@ -149,7 +149,7 @@ public class TxtReader {
 		
 		//Adding device to workload
 		Workload.Builder workload=Workload.newBuilder();
-		workload.addDevices(device);
+		workload.addDevices(device.build());
 		
 		//return workload
 		return workload.build();

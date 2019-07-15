@@ -4,7 +4,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 
-import Main.WorkloadTest;
+import Main.Launcher;
 import eu.recap.sim.models.WorkloadModel.Request;
 
 public class Document {
@@ -60,7 +60,7 @@ public class Document {
 		// actually)
 		// https://www.compose.com/articles/how-scoring-works-in-elasticsearch/
 
-		List<Long> qTerms = WorkloadTest.unparse(request.getSearchContent());
+		List<Long> qTerms = Launcher.unparse(request.getSearchContent());
 
 		// Calculation of the query normalization and coordination factors
 		double queryNorm = 0;

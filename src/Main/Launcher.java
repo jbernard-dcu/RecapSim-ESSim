@@ -9,6 +9,8 @@ import Classes.Document;
 import Classes.Generation;
 import Classes.Print;
 import Classes.Shard;
+import Classes.TxtReader;
+import Classes.TxtReader.writeOrRead;
 import Distribution.*;
 import eu.recap.sim.RecapSim;
 import eu.recap.sim.models.ApplicationModel.ApplicationLandscape;
@@ -16,7 +18,7 @@ import eu.recap.sim.models.ExperimentModel.Experiment;
 import eu.recap.sim.models.InfrastructureModel.Infrastructure;
 import eu.recap.sim.models.WorkloadModel.*;
 
-public class WorkloadTest {
+public class Launcher {
 
 	// Parameters nbWord request
 	final static double AVG_NWREQ = 4.;
@@ -50,7 +52,9 @@ public class WorkloadTest {
 		///////////////////////////////////////////////////////////////////////////////////////////////
 
 		TreeMap<Long, Double> termDist = BasicZipfDist(NB_TERMSET);
-		Workload workload = Generation.GenerateSyntheticWorkload(termDist, NB_TERMSET, NB_REQUEST);
+		//Workload workload = Generation.GenerateSyntheticWorkload(termDist, NB_TERMSET, NB_REQUEST);
+		
+		
 
 		///////////////////////////////////////////////////////////////////////////////////////////////
 		/////////////////// DATABASE GENERATION
@@ -109,6 +113,9 @@ public class WorkloadTest {
 		///////////////////////////////////////////////////////////////////////////////////////////////
 		/////////////////// EXPERIMENT CONFIGURATION
 		///////////////////////////////////////////////////////////////////////////////////////////////
+		
+		Workload workload = TxtReader.GenerateWorkload(3, writeOrRead.R, appLandscape);
+		//Workload workload = Generation.GenerateSyntheticWorkload(termDist, NB_TERMSET, NB_REQUEST);
 		
 		Experiment.Builder configBuilder = Experiment.newBuilder();
 		configBuilder.setName("General config");

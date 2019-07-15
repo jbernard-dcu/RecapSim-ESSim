@@ -2,7 +2,7 @@ package Classes;
 
 import java.util.List;
 
-import Main.WorkloadTest;
+import Main.Launcher;
 import eu.recap.sim.models.WorkloadModel.Device;
 import eu.recap.sim.models.WorkloadModel.Request;
 import eu.recap.sim.models.WorkloadModel.Workload;
@@ -65,7 +65,7 @@ public class Print {
 			for (Request request : device.getRequestsList()) {
 				System.out.printf(configPrintf, request.getSearchContent().toString(), "|",
 						(request.getTime() - startTime), "|", device.getDeviceId(), "|",
-						WorkloadTest.getWeight(request) + "\n");
+						Launcher.getWeight(request) + "\n");
 			}
 		}
 
