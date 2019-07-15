@@ -83,7 +83,6 @@ public final class Generation {
 	static int ESToWebServer_iops = 1;
 	static int ESToWebServer_ram = 200;// 500
 	static int ESToWebServer_transferData = 1 * timeUnits;
-	
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////// GENERATORS
@@ -167,7 +166,8 @@ public final class Generation {
 	 * distributions</br>
 	 * Change (for now) this method to change workload distributions
 	 */
-	public static Workload GenerateSyntheticWorkload(TreeMap<Long, Double> termDist, int NB_TERMSET, int NB_REQUEST) {
+	public static Workload GenerateSyntheticWorkload(TreeMap<Long, Double> termDist, int NB_TERMSET, int NB_REQUEST,
+			ApplicationLandscape appLandscape) {
 
 		long startTime = System.currentTimeMillis();
 
@@ -208,7 +208,7 @@ public final class Generation {
 			while (space < NB_REQUEST) {
 				IDs[space] = clientID;
 				freeSpace.remove((Integer) space);
-				space = space + (int) exp.sample();
+				space += (int) exp.sample();
 			}
 		}
 
@@ -218,10 +218,11 @@ public final class Generation {
 		List<Request.Builder> buildersRequests = Launcher.buildersRequests(termDist);
 		List<Request> requests = new ArrayList<Request>();
 		int i = 0;
+		//request.time and request.applicationId are set here
 		for (Request.Builder request : buildersRequests) {
-			request.setTime(timeSequence.get(i));
+			request.setTime(timeSequence.get(i)-startTime);
+			request.setApplicationId(appLandscape.getApplicationsList().get(0).getApplicationId());
 
-			// TODO : setting all possible parameters here
 			requests.add(request.build());
 
 			i++;
@@ -419,8 +420,10 @@ public final class Generation {
 			 * Creating, deploying and building shards
 			 */
 			for (int shard = 1; shard <= NB_SHARDS; shard++) {
-				String vmId = Integer.toString(nodesCounter);
-				Component.Builder shardBuilder = createShardComponent("Shard_" + shard, vmId, vmId + "_1", nodeIds.get(nodesCounter));
+
+				String componentId = Integer.toString(nodesCounter);
+				Component.Builder shardBuilder = createShardComponent("Shard_" + shard, Integer.toString(2 + shard),
+						componentId + "_1", nodeIds.get(nodesCounter));
 
 				nodesCounter = (nodesCounter == indexNmberOfNodes) ? 0 : nodesCounter + 1;
 
@@ -522,13 +525,11 @@ public final class Generation {
 
 	}
 
-	
-	
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////// METHODS
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////////////////
-	
+
 	/**
 	 * Generates an array containing the same value everywhere, for testing
 	 */

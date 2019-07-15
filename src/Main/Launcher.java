@@ -52,9 +52,8 @@ public class Launcher {
 		///////////////////////////////////////////////////////////////////////////////////////////////
 
 		TreeMap<Long, Double> termDist = BasicZipfDist(NB_TERMSET);
-		//Workload workload = Generation.GenerateSyntheticWorkload(termDist, NB_TERMSET, NB_REQUEST);
-		
-		
+		// Workload workload = Generation.GenerateSyntheticWorkload(termDist,
+		// NB_TERMSET, NB_REQUEST);
 
 		///////////////////////////////////////////////////////////////////////////////////////////////
 		/////////////////// DATABASE GENERATION
@@ -92,45 +91,46 @@ public class Launcher {
 		ApplicationLandscape appLandscape = Generation.GenerateApplicationLandscape(NB_APPS, NB_PRIMARYSHARDS,
 				infrastructure);
 
-		/*///////////////////////////////////////////////////////////////////////////////////////////////
-		/////////////////// SEARCH RESULTS
-		///////////////////////////////////////////////////////////////////////////////////////////////
-		///////////////////////////////////////////////////////////////////////////////////////////////
+		/*
+		 * /////////////////////////////////////////////////////////////////////////////
+		 * ////////////////// /////////////////// SEARCH RESULTS
+		 * /////////////////////////////////////////////////////////////////////////////
+		 * //////////////////
+		 * /////////////////////////////////////////////////////////////////////////////
+		 * //////////////////
+		 * 
+		 * // List of requests Request request = workload.getDevices(0).getRequests(0);
+		 * System.out.println(request.getSearchContent());
+		 * 
+		 * for (Shard shard : shardBase) { if (shard.isPrimaryShard()) {
+		 * System.out.println(
+		 * "---------------------------------------------------------");
+		 * System.out.println(shard.fetchResults(request, shardBase, p_DOC).toString());
+		 * } }
+		 * 
+		 * // Print.printDocScore(data, shardBase,
+		 * workload.getDevices(0).getRequests(0));
+		 */
 
-		// List of requests
-		Request request = workload.getDevices(0).getRequests(0);
-		System.out.println(request.getSearchContent());
-
-		for (Shard shard : shardBase) {
-			if (shard.isPrimaryShard()) {
-				System.out.println("---------------------------------------------------------");
-				System.out.println(shard.fetchResults(request, shardBase, p_DOC).toString());
-			}
-		}
-
-		// Print.printDocScore(data, shardBase, workload.getDevices(0).getRequests(0));*/
-		
 		///////////////////////////////////////////////////////////////////////////////////////////////
 		/////////////////// EXPERIMENT CONFIGURATION
 		///////////////////////////////////////////////////////////////////////////////////////////////
-		
-		Workload workload = TxtReader.GenerateWorkload(3, writeOrRead.R, appLandscape);
-		//Workload workload = Generation.GenerateSyntheticWorkload(termDist, NB_TERMSET, NB_REQUEST);
-		
+
+		// Workload workload = TxtReader.GenerateWorkload(3, writeOrRead.R,
+		// appLandscape); //Working
+		Workload workload = Generation.GenerateSyntheticWorkload(termDist, NB_TERMSET, NB_REQUEST, appLandscape);
+
 		Experiment.Builder configBuilder = Experiment.newBuilder();
 		configBuilder.setName("General config");
 		configBuilder.setDuration(200);
-		configBuilder.setApplicationLandscape(appLandscape)
-					 .setInfrastructure(infrastructure)
-					 .setWorkload(workload);
+		configBuilder.setApplicationLandscape(appLandscape).setInfrastructure(infrastructure).setWorkload(workload);
 		Experiment config = configBuilder.build();
-		
+
 		///////////////////////////////////////////////////////////////////////////////////////////////
 		/////////////////// RESULTS
 		///////////////////////////////////////////////////////////////////////////////////////////////
-		
-		launchSimulation(config);
 
+		launchSimulation(config);
 
 	}
 
@@ -142,9 +142,9 @@ public class Launcher {
 	public static void launchSimulation(Experiment config) {
 		RecapSim recapExperiment = new RecapSim();
 		String simulationId = recapExperiment.StartSimulation(config);
-		System.out.println("Simulation is:"+ recapExperiment.SimulationStatus(simulationId));
+		System.out.println("Simulation is:" + recapExperiment.SimulationStatus(simulationId));
 	}
-	
+
 	/**
 	 * Creates a basic Zipfian distribution, useful to create the parameter of FreqD
 	 * constructor
@@ -167,9 +167,9 @@ public class Launcher {
 
 	/**
 	 * generates a List of nbRequest Request.Builders</br>
-	 * searchContent, ComponentId, apiId, reqestId and dataToTransfer are set
-	 * here</br>
-	 * TODO : add as many settings as possible TODO : add querySet!=querySequence
+	 * searchContent, ComponentId, apiId, requestId, dataToTransfer and
+	 * ExpectedDuration are set here</br>
+	 * TODO : add as many settings as possible
 	 */
 	public static List<Request.Builder> buildersRequests(TreeMap<Long, Double> termDist) {
 		// Generating RequestSet and RequestScores
@@ -178,8 +178,8 @@ public class Launcher {
 		for (int nR = 0; nR < NB_REQUEST; nR++) {
 			Request.Builder requestBuilder = Request.newBuilder();
 			requestBuilder.setSearchContent(randQueryContent(termDist, randGint(AVG_NWREQ, STD_NWREQ)));
-
-			requestBuilder.setComponentId("1").setApiId("1_1").setRequestId(nR).setDataToTransfer(1); // ??
+			requestBuilder.setComponentId("1").setApiId("1_1").setRequestId(nR).setDataToTransfer(1)
+					.setExpectedDuration(100); // TODO change !
 			// request.set...
 			requestSet.add(requestBuilder);
 			requestScores.add(getWeight(requestBuilder.build()));
