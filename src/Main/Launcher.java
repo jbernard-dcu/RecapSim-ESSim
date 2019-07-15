@@ -25,8 +25,8 @@ public class Launcher {
 	final static double STD_NWREQ = 2.;
 
 	// Parameters nbWord document
-	final static int AVG_NWDOC = 1000;
-	final static int STD_NWDOC = 500;
+	final static int AVG_NWDOC = 10;
+	final static int STD_NWDOC = 5;
 
 	// Parameters termSet and querySet
 	final static int NB_TERMSET = 10_000;
@@ -79,7 +79,7 @@ public class Launcher {
 			shardBase.get(index).addDocument(doc);
 		}
 
-		System.out.println("Routing done:" + (System.currentTimeMillis() - startTime)+"ms");
+		System.out.println("Routing done:" + (System.currentTimeMillis() - startTime) + "ms");
 
 		///////////////////////////////////////////////////////////////////////////////////////////////
 		/////////////////// APPLICATION MODEL
@@ -113,9 +113,10 @@ public class Launcher {
 		/////////////////// EXPERIMENT CONFIGURATION
 		///////////////////////////////////////////////////////////////////////////////////////////////
 
-		
-		//Workload workload = TxtReader.GenerateWorkload(3, writeOrRead.R, appLandscape); // Working
-		Workload workload = Generation.GenerateSyntheticWorkload(termDist, NB_TERMSET, NB_REQUEST, appLandscape,shardBase);
+		// Workload workload = TxtReader.GenerateWorkload(3, writeOrRead.R,
+		// appLandscape); // Working
+		Workload workload = Generation.GenerateSyntheticWorkload(termDist, NB_TERMSET, NB_REQUEST, appLandscape,
+				shardBase);
 
 		Experiment.Builder configBuilder = Experiment.newBuilder();
 		configBuilder.setName("General config");
@@ -164,7 +165,7 @@ public class Launcher {
 
 	/**
 	 * generates a List of nbRequest Request.Builders</br>
-	 * searchContent, ComponentId, apiId, requestId, dataToTransfer and
+	 * searchContent, ComponentId, apiId, requestId, dataToTransfer and 
 	 * ExpectedDuration are set here</br>
 	 * TODO : add as many settings as possible
 	 */
@@ -177,7 +178,7 @@ public class Launcher {
 			requestBuilder.setSearchContent(randQueryContent(termDist, randGint(AVG_NWREQ, STD_NWREQ)));
 			requestBuilder.setComponentId("1").setApiId("1_1").setRequestId(nR).setDataToTransfer(1)
 					.setExpectedDuration(100); // TODO change !
-			// request.set...
+			// TODO requestBuilder.set...
 			requestSet.add(requestBuilder);
 			requestScores.add(getWeight(requestBuilder.build()));
 

@@ -6,8 +6,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.TreeMap;
-
-import Main.Launcher;
 import eu.recap.sim.models.InfrastructureModel.Node;
 import eu.recap.sim.models.WorkloadModel.Request;
 
@@ -177,7 +175,8 @@ public class Shard {
 	 * constructor
 	 */
 	public void addToReplicationGroup(Shard s) {
-		this.replicationGroup.add(s);
+		if (!this.replicationGroup.contains(s))
+			this.replicationGroup.add(s);
 	}
 
 	/**

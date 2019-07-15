@@ -224,6 +224,9 @@ public final class Generation {
 			request.setTime(timeSequence.get(i)-startTime);
 			request.setApplicationId(appLandscape.getApplicationsList().get(0).getApplicationId());
 			
+			//TODO MIPS data node should depend on where the request is sent
+			request.setMipsDataNodes(DataNodeToES_mips);
+			
 			/*
 			 * Data nodes destinations for the request
 			 */
@@ -285,7 +288,7 @@ public final class Generation {
 	 * LinknovateValidarionRAM.GenerateLinknovateValidationApplication (@author
 	 * Malika)
 	 */
-	public static ApplicationLandscape GenerateApplicationLandscape(int appQty, int NB_SHARDS,
+	public static ApplicationLandscape GenerateApplicationLandscape(int appQty, int NB_PRIMARYSHARDS,
 			Infrastructure infrastructure) {
 
 		long startTime = System.currentTimeMillis();
@@ -437,11 +440,13 @@ public final class Generation {
 			/*
 			 * Creating, deploying and building shards
 			 */
-			for (int shard = 1; shard <= NB_SHARDS; shard++) {
-
-				String componentId = Integer.toString(nodesCounter);
-				Component.Builder shardBuilder = createShardComponent("Shard_" + shard, Integer.toString(2 + shard),
-						componentId + "_1", nodeIds.get(nodesCounter));
+			for (int shard = 1; shard <= NB_PRIMARYSHARDS; shard++) {
+				
+				//Shard 1 is deployed on component 3, etc...
+				String componentNmbr=Integer.toString(2+shard);
+				
+				Component.Builder shardBuilder = createShardComponent("Shard_" + shard, componentNmbr,
+						componentNmbr + "_1", nodeIds.get(nodesCounter));
 
 				nodesCounter = (nodesCounter == indexNmberOfNodes) ? 0 : nodesCounter + 1;
 
