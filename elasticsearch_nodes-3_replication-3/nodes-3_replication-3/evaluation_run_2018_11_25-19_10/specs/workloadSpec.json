@@ -1,0 +1,53 @@
+class YCSBWorkload {
+    dbEndpoints: class DBEndpoints {
+        [class DBEndpoint {
+            ipAddress: 192.168.100.14
+            port: 0
+        }, class DBEndpoint {
+            ipAddress: 192.168.100.5
+            port: 0
+        }, class DBEndpoint {
+            ipAddress: 192.168.100.43
+            port: 0
+        }]
+    }
+    measurementConfig: class MeasurementConfig {
+        interval: 10
+        measurementType: NONE
+    }
+    workloadConfig: class WorkloadConfig {
+        workloadType: RUN
+        workloadClass: com.yahoo.ycsb.workloads.CoreWorkload
+        maxExecutionTime: 1800
+        threadCount: 16
+        recordCount: 1000000
+        insertStart: 0
+        insertCount: 0
+        operations: 1000000
+        targetOps: 0
+        fieldCount: 10
+        fieldLength: 500
+        readAllFileds: true
+        readModifyWriteProportion: 0
+        requestdistribution: ZIPFIAN
+        scanLengthDistribution: UNIFORM
+        insertOrder: ORDERED
+        readProportion: 0.95
+        updateProportion: 0.05
+        insertProportion: 0.0
+        scanProportion: 0.0
+        maxScanLength: 1000
+        coreWorkloadInsertionRetryLimit: 3
+        coreWorkloadInsertionRetryInterval: 3
+    }
+    databaseConfig: class DatabaseConfig {
+        databaseBinding: ELASTICSEARCH5
+        endpointParameterName: es.hosts.list
+        tableParameterName: 
+        tableName: ycsb
+        configPorperties: [class DatabaseConfigProperty {
+            name:  es.remote
+            value: true
+        }]
+    }
+}

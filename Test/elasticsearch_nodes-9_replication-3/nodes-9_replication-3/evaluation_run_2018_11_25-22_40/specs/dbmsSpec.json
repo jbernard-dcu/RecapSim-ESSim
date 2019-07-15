@@ -1,0 +1,76 @@
+class DatabaseCluster {
+    type: ELASTICSEARCH
+    databaseDataComponent: [class DatabaseDataComponent {
+        instances: 8
+        resource: class VM {
+            class Resource {
+                resourceType: VM
+            }
+            idCloud: 1
+            idImage: 64
+            idHardware: 101
+            idLocation: 109
+        }
+        customConfiguration: class CustomConfiguration {
+            [class CustomConfigurationItem {
+                envName: string
+                envValue: string
+            }]
+        }
+        name: DATA
+        nodeConfiguration: class NodeConfiguration {
+            dataMemory: class DataMemory {
+                envName: DATAMEMORY
+                envValue: 0
+            }
+            indexMemory: class IndexMemory {
+                envName: INDEXMEMORY
+                envValue: 0
+            }
+        }
+    }]
+    databaseSeedComponent: [class DatabaseSeedComponent {
+        instances: 1
+        resource: class VM {
+            class Resource {
+                resourceType: VM
+            }
+            idCloud: 1
+            idImage: 64
+            idHardware: 101
+            idLocation: 109
+        }
+        customConfiguration: class CustomConfiguration {
+            [class CustomConfigurationItem {
+                envName: NUMBEROFSHARDS
+                envValue: 9
+            }]
+        }
+        name: SEED
+        replicationFactor: class ReplicationFactor {
+            envName: REPLICATIONFACTOR
+            envValue: 3
+        }
+        nodeConfiguration: class NodeConfiguration {
+            dataMemory: class DataMemory {
+                envName: DATAMEMORY
+                envValue: 0
+            }
+            indexMemory: class IndexMemory {
+                envName: INDEXMEMORY
+                envValue: 0
+            }
+        }
+    }]
+    databaseManagementComponent: []
+    monitoringConfig: class MonitoringConfig {
+        scenarioId: blade
+        scenarioConfiguration: cloud-resource-selection
+        scenarioRun: 1
+        scenarioCloud: omistack
+        influxDbUrl: 134.60.152.90:8086
+        influxDbdatabase: telegraf
+        influxDbUser: 
+        influxDbPassword: 
+    }
+}

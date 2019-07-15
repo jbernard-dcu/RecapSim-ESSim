@@ -1,0 +1,46 @@
+{
+    "metricsLoadPhase": {
+        "ins_avg_lat": [
+            40044.0
+        ], 
+        "scan_op": [], 
+        "throughput": [
+            373.0
+        ], 
+        "upd_avg_lat": [], 
+        "read_avg_lat": [], 
+        "scan_avg_lat": [], 
+        "runtime": [
+            41.877116666666666
+        ], 
+        "ins_op": [
+            937500.0
+        ], 
+        "read_op": [], 
+        "upd_op": []
+    }, 
+    "metricsTransactionPhase": {
+        "ins_avg_lat": [], 
+        "scan_op": [], 
+        "throughput": [
+            1523.0
+        ], 
+        "upd_avg_lat": [
+            30178.0
+        ], 
+        "read_avg_lat": [
+            8796.0
+        ], 
+        "scan_avg_lat": [], 
+        "runtime": [
+            10.261883333333333
+        ], 
+        "ins_op": [], 
+        "read_op": [
+            828211.0
+        ], 
+        "upd_op": [
+            43667.0
+        ]
+    }
+}
