@@ -34,10 +34,10 @@ public class Launcher {
 
 	// Parameters database
 	final static int NB_DOCS = 1_000;
-	final static int NB_INDEX = 1;
-	final static int NB_PRIMARYSHARDS = 4;
-	final static int NB_REPLICAS = 3; // per primary shard
-	final static int NB_TOTALSHARDS = NB_PRIMARYSHARDS * (1 + NB_REPLICAS);
+	public final static int NB_INDEX = 1;
+	public final static int NB_PRIMARYSHARDS = 3;
+	public final static int NB_REPLICAS = 3; // per primary shard
+	public final static int NB_TOTALSHARDS = NB_PRIMARYSHARDS * (1 + NB_REPLICAS);
 
 	// Parameters ApplicationModel
 	final static int NB_APPS = 1;

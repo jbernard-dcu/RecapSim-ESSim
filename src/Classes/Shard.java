@@ -52,9 +52,6 @@ public class Shard {
 
 	}
 
-	/*
-	 * TODO fix the 1 document results and finish Problem --> deal with infinity !!
-	 */
 	public TreeMap<Double, Document> fetchResults(Request request, List<Shard> shardbase, double p_Doc)
 			throws Exception {
 		List<Long> searchContent = unparse(request.getSearchContent());

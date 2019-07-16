@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -13,8 +14,78 @@ import eu.recap.sim.models.WorkloadModel.Request;
 import eu.recap.sim.models.WorkloadModel.Workload;
 
 public class TxtReader {
-	
-	
+
+	public static void main(String[] args) {
+		System.out.println(readMonitoring(9, typeData.CpuLoad, 111).toString());
+	}
+
+	public enum typeData {
+		CpuLoad, DiskIOReads, DiskIOWrites, MemoryUsage, NetworkReceived, NetworkSent
+	}
+
+	public static List<List<Object>> readMonitoring(int numberNodes, typeData type, int vm) {
+		String path = "/elasticsearch_nodes-" + numberNodes + "_replication-3/nodes-" + numberNodes
+				+ "_replication-3/evaluation_run_2018_11_25-";
+		if (numberNodes == 3)
+			path += "19_10/monitoring/";
+		if (numberNodes == 9)
+			path += "22_40/monitoring/";
+
+		String fileName;
+		switch (type) {
+		case CpuLoad:
+			fileName = "cpuLoad";
+			break;
+		case DiskIOReads:
+			fileName = "disk-io-reads";
+			break;
+		case DiskIOWrites:
+			fileName = "disk-io-writes";
+			break;
+		case MemoryUsage:
+			fileName = "memory-usage";
+			break;
+		case NetworkReceived:
+			fileName = "network-received";
+			break;
+		case NetworkSent:
+			fileName = "network-sent";
+			break;
+		default:
+			fileName = "";
+		}
+		fileName += "-node-134.60.64." + vm + ".txt";
+
+		List<List<Object>> columns = new ArrayList<List<Object>>();
+
+		try {
+			File file = new File(System.getProperty("user.dir") + File.separator + path + File.separator + fileName);
+			FileReader fileReader = new FileReader(file);
+			BufferedReader bufferedReader = new BufferedReader(fileReader);
+
+			String line = bufferedReader.readLine();
+
+			final int NB_FIELDS = 3;
+			for (int field = 0; field < NB_FIELDS; field++) {
+				columns.add(new ArrayList<Object>());
+			}
+
+			while ((line = bufferedReader.readLine()) != null) {
+				columns.get(0).add(Double.parseDouble(getWord(line, 0, ",")));
+				columns.get(1).add(getWord(line, line.indexOf(",") + 1, ","));
+				columns.get(2).add(Double.parseDouble(getWord(line, line.indexOf(",", line.indexOf(",") + 1) + 1, ",")));
+			}
+
+			bufferedReader.close();
+
+		} catch (Exception ex) {
+			ex.printStackTrace();
+		}
+
+		return columns;
+
+	}
+
 	public enum writeOrRead {
 		W, R
 	}
@@ -26,21 +97,20 @@ public class TxtReader {
 	 *                    <code>writeOrRead.R</code> to load transaction.txt
 	 * @param numberNodes : choose 3 or 9 to choose the workload
 	 */
-	public static Workload GenerateWorkload(int numberNodes, writeOrRead pick, ApplicationLandscape appLandscape) throws FileNotFoundException {
+	public static Workload GenerateWorkload(int numberNodes, writeOrRead pick, ApplicationLandscape appLandscape)
+			throws FileNotFoundException {
 
 		//////////////////////////////////////////////////////////////////////////////////////////////////
 		///////////////////// READING INPUT FILE
 		//////////////////////////////////////////////////////////////////////////////////////////////////
 		//////////////////////////////////////////////////////////////////////////////////////////////////
 
-		String path = "";
-		switch (numberNodes) {
-		case 3:
-			path = "/elasticsearch_nodes-3_replication-3/nodes-3_replication-3/evaluation_run_2018_11_25-19_10/data/";
-			break;
-		case 9:
-			path = "/elasticsearch_nodes-9_replication-3/nodes-9_replication-3/evaluation_run_2018_11_25-22_40/data/";
-		}
+		String path = "/elasticsearch_nodes-" + numberNodes + "_replication-3/nodes-" + numberNodes
+				+ "_replication-3/evaluation_run_2018_11_25-";
+		if (numberNodes == 3)
+			path += "19_10/data/";
+		if (numberNodes == 9)
+			path += "22_40/data/";
 
 		String fileName = "";
 		switch (pick) {
@@ -126,37 +196,34 @@ public class TxtReader {
 		///////////////////// GENERATING WORKLOAD
 		//////////////////////////////////////////////////////////////////////////////////////////////////
 		//////////////////////////////////////////////////////////////////////////////////////////////////
-		
-		//Adding requests to device
-		Device.Builder device=Device.newBuilder();
-		for (int request=0;request<validRequest.get(0).size();request++) {
-			Request.Builder requestBuilder=Request.newBuilder();
-			
-			SpecRequest spec=(SpecRequest)(validRequest.get(4).get(request));
-			
-			requestBuilder.setTime(new Long(validRequest.get(0).get(request).toString()))
-						  .setRequestId(request)
-						  .setApplicationId(appLandscape.getApplications(0).getApplicationId()) // TODO generalize with multiple applications
-						  .setComponentId("1")
-						  .setApiId("1_1")
-						  .setExpectedDuration((int)spec.getAvgTime())   //TODO int vs double ?
-						  .setDataToTransfer(1);  
-			//TODO set mipsDataNode, dataNodes
 
-			
+		// Adding requests to device
+		Device.Builder device = Device.newBuilder();
+		for (int request = 0; request < validRequest.get(0).size(); request++) {
+			Request.Builder requestBuilder = Request.newBuilder();
+
+			SpecRequest spec = (SpecRequest) (validRequest.get(4).get(request));
+
+			requestBuilder.setTime(new Long(validRequest.get(0).get(request).toString())).setRequestId(request)
+					.setApplicationId(appLandscape.getApplications(0).getApplicationId()) // TODO generalize with
+																							// multiple applications
+					.setComponentId("1").setApiId("1_1").setExpectedDuration((int) spec.getAvgTime()) // TODO int vs
+																										// double ?
+					.setDataToTransfer(1);
+			// TODO set mipsDataNode, dataNodes
+
 			device.addRequests(requestBuilder.build());
 		}
-		
-		//Adding device to workload
-		Workload.Builder workload=Workload.newBuilder();
+
+		// Adding device to workload
+		Workload.Builder workload = Workload.newBuilder();
 		workload.addDevices(device.build());
-		
-		//return workload
+
+		// return workload
 		return workload.build();
-		
 
 	}
-	
+
 	//////////////////////////////////////////////////////////////////////////////////////////////////
 	///////////////////// OTHER METHODS AND CLASSES
 	//////////////////////////////////////////////////////////////////////////////////////////////////
@@ -169,7 +236,7 @@ public class TxtReader {
 	 */
 	public static String getWord(String source, int start, String separator) {
 		return source.substring(start,
-				(source.contains(separator)) ? source.indexOf(separator, start) : source.length());
+				(source.substring(start).contains(separator)) ? source.indexOf(separator, start) : source.length());
 	}
 
 	/**
@@ -260,7 +327,8 @@ class SpecRequest {
 	}
 
 	/**
-	 * Returns the average expected time in milliseconds to complete the request, based on nb_operations and throughput
+	 * Returns the average expected time in milliseconds to complete the request,
+	 * based on nb_operations and throughput
 	 */
 	public double getAvgTime() {
 		return this.avg;

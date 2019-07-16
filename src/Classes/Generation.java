@@ -44,13 +44,13 @@ public final class Generation {
 
 	// Sites
 	static final int numberSites = 1;
-	static int[] numberNodesPerSites = { 4 }; //TODO 
+	static int[] numberNodesPerSite = { 2 + Launcher.NB_PRIMARYSHARDS };// WS + ES + Data nodes
 
 	// Hosts
-	static final int[][] cpuFrequency = initSameValue(numberSites, numberNodesPerSites, 3000); // MIPS or 2.6 GHz
-	static final int[][] cpuCores = initSameValue(numberSites, numberNodesPerSites, 80);
-	static final int[][] ram = initSameValue(numberSites, numberNodesPerSites, 2048_000); // host memory (MEGABYTE)
-	static final int[][] hdd = initSameValue(numberSites, numberNodesPerSites, 1000000_000); // host storage (MEGABYTE)
+	static final int[][] cpuFrequency = initSameValue(numberSites, numberNodesPerSite, 3000); // MIPS or 2.6 GHz
+	static final int[][] cpuCores = initSameValue(numberSites, numberNodesPerSite, 80);
+	static final int[][] ram = initSameValue(numberSites, numberNodesPerSite, 2048_000); // host memory (MEGABYTE)
+	static final int[][] hdd = initSameValue(numberSites, numberNodesPerSite, 1000000_000); // host storage (MEGABYTE)
 	static final int bw = 10_000; // in 10Gbit/s
 
 	// Application landscape
@@ -96,19 +96,18 @@ public final class Generation {
 		long startTime = System.currentTimeMillis();
 
 		// Fetching list of nodes
-		int NB_NODES = 0;
 		List<Node> nodes = new ArrayList<Node>();
 		for (ResourceSite site : infrastructure.getSitesList()) {
 			nodes.addAll(site.getNodesList());
-			NB_NODES += site.getNodesCount();
 		}
+		int NB_NODES = nodes.size();
 
 		// Creating shards
 		List<Shard> shardBase = new ArrayList<Shard>();
 		int nodeId;
 		for (int shardId = 0; shardId < NB_TOTALSHARDS; shardId++) {
-			nodeId = shardId % NB_NODES;
-			shardBase.add(new Shard(nodes.get(nodeId), shardId));
+			nodeId = shardAllocation(shardId, NB_NODES);
+			shardBase.add(new Shard(nodes.get(nodeId), nodeId));
 		}
 		for (int indexShard = 0; indexShard < NB_TOTALSHARDS; indexShard++) {
 			int previousPrimaryShard = (NB_REPLICAS + 1) * (int) (indexShard / (NB_REPLICAS + 1));
@@ -232,21 +231,24 @@ public final class Generation {
 			 * Data nodes destinations for the request
 			 */
 			List<Long> searchContent = Launcher.unparse(request.getSearchContent());
-			System.out.println("search:" + searchContent.toString());
 
 			List<Shard> shardDist = new ArrayList<Shard>();
 			for (long word : searchContent) {
-				System.out.println("WORD:" + word);
+				System.out.println("Word:" + word);
 				for (Shard shard : shardBase) {
-					if (shard.isPrimaryShard() && shard.getInvertedIndex().containsKey(word))
+					if (shard.isPrimaryShard() && shard.getInvertedIndex().containsKey(word)
+							&& !shardDist.contains(shard)) {
+						System.out.println("Shard picked:" + shard.toString() + ", ");
 						shardDist.add(shard);
+					}
+
 				}
 			}
 			for (Shard dest : shardDist) {
-				request.addDataNodes(1 + Integer.valueOf(dest.getNode().getId().substring(2)));
+				request.addDataNodes(Integer.valueOf(dest.getNode().getId().substring(2))); // counting starts at 1
 			}
 
-			System.out.println("====" + request.getRequestId() + "==" + request.getDataNodesList().toString());
+			System.out.println("Nodes:" + request.getDataNodesList().toString());
 
 			requests.add(request.build());
 
@@ -488,7 +490,7 @@ public final class Generation {
 			site.setHierarchyLevel(SiteLevel.Edge);
 
 			// create nodes
-			for (int j = 0; j < numberNodesPerSites[i]; j++) {
+			for (int j = 0; j < numberNodesPerSite[i]; j++) {
 
 				Node.Builder node = Node.newBuilder();
 				node.setName("Node_" + i + "_" + j);
@@ -545,6 +547,15 @@ public final class Generation {
 	////////////////////////// METHODS
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	/**
+	 * Method returning the int nodeId where the shard should be allocated based on
+	 * the allocation policy TODO : in the future, change this method to get an
+	 * automatic realistic shard allocation policy
+	 */
+	private static int shardAllocation(int shardId, int NB_NODES) {
+		return 2 + shardId % (NB_NODES - 2);
+	}
 
 	/**
 	 * Generates an array containing the same value everywhere, for testing
