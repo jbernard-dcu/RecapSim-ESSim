@@ -245,7 +245,7 @@ public final class Generation {
 				}
 			}
 			for (Shard dest : shardDist) {
-				request.addDataNodes(Integer.valueOf(dest.getNode().getId().substring(2))); // counting starts at 1
+				request.addDataNodes(Integer.valueOf(dest.getNode().getId().substring(2)));
 			}
 
 			System.out.println("Nodes:" + request.getDataNodesList().toString());
@@ -555,6 +555,10 @@ public final class Generation {
 	 */
 	private static int shardAllocation(int shardId, int NB_NODES) {
 		return 2 + shardId % (NB_NODES - 2);
+	}
+	
+	public static int[][] initFromTxt(int nSites, int[] nbNodesPerSite) {
+		
 	}
 
 	/**

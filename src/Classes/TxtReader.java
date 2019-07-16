@@ -15,8 +15,11 @@ import eu.recap.sim.models.WorkloadModel.Workload;
 
 public class TxtReader {
 
-	public static void main(String[] args) {
-		System.out.println(readMonitoring(9, typeData.CpuLoad, 111).toString());
+	//TODO method to generate the characteristics input data 
+	
+	public void GenerateTxtData() {
+		File file = new File("C:\Users\josf9\git\Test\source_init");
+		
 	}
 
 	public enum typeData {
