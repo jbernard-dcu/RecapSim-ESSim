@@ -29,13 +29,13 @@ public class Launcher {
 	final static int STD_NWDOC = 5;
 
 	// Parameters termSet and querySet
-	final static int NB_TERMSET = 10_000;
-	final static int NB_REQUEST = 10;
+	final static int NB_TERMSET = 100_000;
+	final static int NB_REQUEST = 5;
 
 	// Parameters database
 	final static int NB_DOCS = 1_000;
 	final static int NB_INDEX = 1;
-	final static int NB_PRIMARYSHARDS = 3;
+	final static int NB_PRIMARYSHARDS = 4;
 	final static int NB_REPLICAS = 3; // per primary shard
 	final static int NB_TOTALSHARDS = NB_PRIMARYSHARDS * (1 + NB_REPLICAS);
 
@@ -48,16 +48,11 @@ public class Launcher {
 	public static void main(String[] args) throws Exception {
 
 		///////////////////////////////////////////////////////////////////////////////////////////////
-		/////////////////// WORKLOAD GENERATION
-		///////////////////////////////////////////////////////////////////////////////////////////////
-
-		TreeMap<Long, Double> termDist = BasicZipfDist(NB_TERMSET);
-		// Workload workload = Generation.GenerateSyntheticWorkload(termDist,
-		// NB_TERMSET, NB_REQUEST);
-
-		///////////////////////////////////////////////////////////////////////////////////////////////
 		/////////////////// DATABASE GENERATION
 		///////////////////////////////////////////////////////////////////////////////////////////////
+		
+		TreeMap<Long,Double> termDist = BasicZipfDist(NB_TERMSET);
+		//TreeMap<Long, Double> termDist = UnifDist(NB_TERMSET);
 
 		List<Document> data = Generation.GenerateDatabase(termDist, NB_DOCS, AVG_NWDOC, STD_NWDOC);
 
@@ -88,35 +83,16 @@ public class Launcher {
 		ApplicationLandscape appLandscape = Generation.GenerateApplicationLandscape(NB_APPS, NB_PRIMARYSHARDS,
 				infrastructure);
 
-		/*
-		 * /////////////////////////////////////////////////////////////////////////////
-		 * ////////////////// /////////////////// SEARCH RESULTS
-		 * /////////////////////////////////////////////////////////////////////////////
-		 * //////////////////
-		 * /////////////////////////////////////////////////////////////////////////////
-		 * //////////////////
-		 * 
-		 * // List of requests Request request = workload.getDevices(0).getRequests(0);
-		 * System.out.println(request.getSearchContent());
-		 * 
-		 * for (Shard shard : shardBase) { if (shard.isPrimaryShard()) {
-		 * System.out.println(
-		 * "---------------------------------------------------------");
-		 * System.out.println(shard.fetchResults(request, shardBase, p_DOC).toString());
-		 * } }
-		 * 
-		 * // Print.printDocScore(data, shardBase,
-		 * workload.getDevices(0).getRequests(0));
-		 */
+		///////////////////////////////////////////////////////////////////////////////////////////////
+		/////////////////// WORKLOAD GENERATION
+		///////////////////////////////////////////////////////////////////////////////////////////////
+		
+		//Workload workload = TxtReader.GenerateWorkload(3, writeOrRead.R,appLandscape);
+		Workload workload = Generation.GenerateSyntheticWorkload(termDist, NB_TERMSET, NB_REQUEST, appLandscape,shardBase);
 
 		///////////////////////////////////////////////////////////////////////////////////////////////
 		/////////////////// EXPERIMENT CONFIGURATION
 		///////////////////////////////////////////////////////////////////////////////////////////////
-
-		// Workload workload = TxtReader.GenerateWorkload(3, writeOrRead.R,
-		// appLandscape); // Working
-		Workload workload = Generation.GenerateSyntheticWorkload(termDist, NB_TERMSET, NB_REQUEST, appLandscape,
-				shardBase);
 
 		Experiment.Builder configBuilder = Experiment.newBuilder();
 		configBuilder.setName("General config");
@@ -151,6 +127,14 @@ public class Launcher {
 		TreeMap<Long, Double> res = new TreeMap<Long, Double>();
 		for (long i = 1; i <= nbTermSet; i++) {
 			res.put(i, 1. / i);
+		}
+		return res;
+	}
+	
+	public static TreeMap<Long, Double> UnifDist(int nbTermSet){
+		TreeMap<Long, Double> res = new TreeMap<Long, Double>();
+		for(long i=0;i<nbTermSet;i++) {
+			res.put(i,1./nbTermSet);
 		}
 		return res;
 	}

@@ -44,7 +44,7 @@ public final class Generation {
 
 	// Sites
 	static final int numberSites = 1;
-	static int[] numberNodesPerSites = { 3 };
+	static int[] numberNodesPerSites = { 4 }; //TODO 
 
 	// Hosts
 	static final int[][] cpuFrequency = initSameValue(numberSites, numberNodesPerSites, 3000); // MIPS or 2.6 GHz
@@ -57,6 +57,9 @@ public final class Generation {
 	final static int vmCores = 8;
 	final static int vmMemory = 28_000;
 	final static int vmStorage = 1_081_000; // all VMs are the same, TODO allow different configurations
+	static int esClient_cores = 16;
+	static int esClient_memory = 112_000;
+	static int esClient_storage = 181_000;
 
 	// resource consumption going from client to web server
 	static int clientToWebServer_mips = 300 * timeUnits / 10;
@@ -114,7 +117,7 @@ public final class Generation {
 			shardBase.get(indexShard).setPrimaryShard(indexShard % (NB_REPLICAS + 1) == 0);
 		}
 
-		System.out.println("Shardbase generated:" + (System.currentTimeMillis() - startTime)+"ms");
+		System.out.println("Shardbase generated:" + (System.currentTimeMillis() - startTime) + "ms");
 
 		return shardBase;
 	}
@@ -134,7 +137,6 @@ public final class Generation {
 		long maxSize = 1_000_000_000; // bytes
 
 		// Generating distribution of words
-		// TODO use different dictionaries
 		// TODO optimize, the doc database creation takes too long, complexity
 		// NB_DOCS*AVG_NWDOC
 		FreqD<Long> wordDist = new FreqD<Long>(termDist);
@@ -156,7 +158,7 @@ public final class Generation {
 
 		}
 
-		System.out.println("Database generated:" + (System.currentTimeMillis() - startTime)+"ms");
+		System.out.println("Database generated:" + (System.currentTimeMillis() - startTime) + "ms");
 
 		return database;
 	}
@@ -211,7 +213,6 @@ public final class Generation {
 				space += (int) exp.sample();
 			}
 		}
-		
 
 		/*
 		 * Creation of Requests
@@ -219,30 +220,33 @@ public final class Generation {
 		List<Request.Builder> buildersRequests = Launcher.buildersRequests(termDist);
 		List<Request> requests = new ArrayList<Request>();
 		int i = 0;
-		//request.time and request.applicationId are set here
+		// request.time and request.applicationId are set here
 		for (Request.Builder request : buildersRequests) {
-			request.setTime(timeSequence.get(i)-startTime);
+			request.setTime(timeSequence.get(i) - startTime);
 			request.setApplicationId(appLandscape.getApplicationsList().get(0).getApplicationId());
-			
-			//TODO MIPS data node should depend on where the request is sent
+
+			// TODO MIPS data node should depend on where the request is sent
 			request.setMipsDataNodes(DataNodeToES_mips);
-			
+
 			/*
 			 * Data nodes destinations for the request
 			 */
 			List<Long> searchContent = Launcher.unparse(request.getSearchContent());
+			System.out.println("search:" + searchContent.toString());
+
 			List<Shard> shardDist = new ArrayList<Shard>();
-			for(long word:searchContent) {
-				for(Shard shard:shardBase) {
-					if(shard.isPrimaryShard()&&shard.getInvertedIndex().containsKey(word)&&!shardDist.contains(shard))
-						shardDist.add(shard);	
+			for (long word : searchContent) {
+				System.out.println("WORD:" + word);
+				for (Shard shard : shardBase) {
+					if (shard.isPrimaryShard() && shard.getInvertedIndex().containsKey(word))
+						shardDist.add(shard);
 				}
 			}
-			for(Shard dest:shardDist) {
-				// nodeId = "x_1", counting starts at 1
-				//TODO
-				request.addDataNodes(1+Integer.valueOf(dest.getNode().getId().substring(2))); 
+			for (Shard dest : shardDist) {
+				request.addDataNodes(1 + Integer.valueOf(dest.getNode().getId().substring(2)));
 			}
+
+			System.out.println("====" + request.getRequestId() + "==" + request.getDataNodesList().toString());
 
 			requests.add(request.build());
 
@@ -278,7 +282,7 @@ public final class Generation {
 			workloadBuilder.addDevices(device);
 		}
 
-		System.out.println("Workload generated:" + (System.currentTimeMillis() - startTime)+"ms");
+		System.out.println("Workload generated:" + (System.currentTimeMillis() - startTime) + "ms");
 
 		return workloadBuilder.build();
 	}
@@ -398,18 +402,10 @@ public final class Generation {
 			esClientApi_1.setRam(webServerToES_ram);
 			esClientApi_1.setDataToTransfer(webServerToES_transferData);
 			// connect to next api
-			esClientApi_1.addNextComponentId("3");
-			esClientApi_1.addNextApiId("3_1");
-			esClientApi_1.addNextComponentId("4");
-			esClientApi_1.addNextApiId("4_1");
-			esClientApi_1.addNextComponentId("5");
-			esClientApi_1.addNextApiId("5_1");
-			esClientApi_1.addNextComponentId("6");
-			esClientApi_1.addNextApiId("6_1");
-			esClientApi_1.addNextComponentId("7");
-			esClientApi_1.addNextApiId("7_1");
-			esClientApi_1.addNextComponentId("8");
-			esClientApi_1.addNextApiId("8_1");
+			for (int shard = 3; shard < 3 + NB_PRIMARYSHARDS; shard++) {
+				esClientApi_1.addNextComponentId("" + shard);
+				esClientApi_1.addNextApiId(shard + "_1");
+			}
 
 			esClientBuilder.addApis(esClientApi_1.build());
 
@@ -430,9 +426,9 @@ public final class Generation {
 
 			// create flavour
 			VeFlavour.Builder veFlavour_esClient = VeFlavour.newBuilder();
-			veFlavour_esClient.setCores(16);
-			veFlavour_esClient.setMemory(112_000);
-			veFlavour_esClient.setStorage(181_000);
+			veFlavour_esClient.setCores(esClient_cores);
+			veFlavour_esClient.setMemory(esClient_memory);
+			veFlavour_esClient.setStorage(esClient_storage);
 
 			esClientBuilder.setFlavour(veFlavour_esClient.build());
 			appBuilder.addComponents(esClientBuilder.build());
@@ -440,13 +436,10 @@ public final class Generation {
 			/*
 			 * Creating, deploying and building shards
 			 */
-			for (int shard = 1; shard <= NB_PRIMARYSHARDS; shard++) {
-				
-				//Shard 1 is deployed on component 3, etc...
-				String componentNmbr=Integer.toString(2+shard);
-				
-				Component.Builder shardBuilder = createShardComponent("Shard_" + shard, componentNmbr,
-						componentNmbr + "_1", nodeIds.get(nodesCounter));
+			for (int shard = 3; shard < 3 + NB_PRIMARYSHARDS; shard++) {
+
+				Component.Builder shardBuilder = createShardComponent("Shard_" + (shard - 2), Integer.toString(shard),
+						nodeIds.get(nodesCounter));
 
 				nodesCounter = (nodesCounter == indexNmberOfNodes) ? 0 : nodesCounter + 1;
 
@@ -457,7 +450,7 @@ public final class Generation {
 
 		}
 
-		System.out.println("ApplicationLandscape generated:" + (System.currentTimeMillis() - startTime)+"ms");
+		System.out.println("ApplicationLandscape generated:" + (System.currentTimeMillis() - startTime) + "ms");
 
 		return applicationLandscapeBuilder.build();
 	}
@@ -542,7 +535,7 @@ public final class Generation {
 
 		infrastructure.addLinks(link.build());
 
-		System.out.println("Infrastructure generated:" + (System.currentTimeMillis() - startTime)+"ms");
+		System.out.println("Infrastructure generated:" + (System.currentTimeMillis() - startTime) + "ms");
 
 		return infrastructure.build();
 
@@ -569,8 +562,7 @@ public final class Generation {
 		return res;
 	}
 
-	public static Component.Builder createShardComponent(String componentName, String componentId,
-			String apiId /* Component ID, API ID */, String nodeId) {
+	public static Component.Builder createShardComponent(String componentName, String componentId, String nodeId) {
 		Component.Builder shard = Component.newBuilder();
 		shard.setComponentName(componentName);
 		shard.setComponentId(componentId);
@@ -584,8 +576,8 @@ public final class Generation {
 
 		// create 1 API
 		Component.Api.Builder shardApi_1 = Component.Api.newBuilder();
-		shardApi_1.setApiId(apiId);
-		shardApi_1.setApiName(shard.getComponentName() + "_" + apiId);
+		shardApi_1.setApiId(componentId + "_1");
+		shardApi_1.setApiName(shard.getComponentName() + "_" + componentId + "_1");
 		// resource consumption
 		shardApi_1.setMips(ESToDataNode_mips);
 		shardApi_1.setIops(ESToDataNode_iops);
