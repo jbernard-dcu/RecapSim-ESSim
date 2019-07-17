@@ -6,9 +6,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import eu.recap.sim.models.ApplicationModel.ApplicationLandscape;
@@ -17,15 +15,6 @@ import eu.recap.sim.models.WorkloadModel.Request;
 import eu.recap.sim.models.WorkloadModel.Workload;
 
 public class TxtReader {
-
-	public static void main(String[] args) {
-		String filepath="C:\\Users\\josf9\\git\\Test\\source_init";
-		
-		System.out.println(Arrays.deepToString(initFromSource(filepath,"cpuFrequency")));
-	}
-
-	// TODO method to generate the characteristics input data
-
 
 	public static int[][] initFromSource(String filepath, String choice) {
 		try {
