@@ -1,11 +1,14 @@
 package Classes;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import eu.recap.sim.models.ApplicationModel.ApplicationLandscape;
@@ -15,11 +18,75 @@ import eu.recap.sim.models.WorkloadModel.Workload;
 
 public class TxtReader {
 
-	//TODO method to generate the characteristics input data 
-	
-	public void GenerateTxtData() {
-		File file = new File("C:\Users\josf9\git\Test\source_init");
+	public static void main(String[] args) {
+		String filepath="C:\\Users\\josf9\\git\\Test\\source_init";
 		
+		System.out.println(Arrays.deepToString(initFromSource(filepath,"cpuFrequency")));
+	}
+
+	// TODO method to generate the characteristics input data
+
+
+	public static int[][] initFromSource(String filepath, String choice) {
+		try {
+			FileReader fr = new FileReader(new File(filepath));
+			BufferedReader br = new BufferedReader(fr);
+			
+			String line = br.readLine();
+			int NB_SITES=Integer.valueOf(getWord(line,line.indexOf(" = ")+3,"?"));
+			line=br.readLine();
+			int NB_NODES=Integer.valueOf(getWord(line,line.indexOf(" = ")+3,"?"));
+			
+			int[][] init=new int[NB_SITES][NB_NODES];
+			
+			int i=0;int j=0;
+			while((line=br.readLine())!=null) {
+				
+				if(line.startsWith("nSite"))
+					i=Integer.valueOf(getWord(line,line.indexOf(" = ")+3,"?"));
+				
+				if(line.startsWith("nNode"))
+					j=Integer.valueOf(getWord(line,line.indexOf(" = ")+3,"?"));
+				
+				if(line.startsWith(choice))
+					init[i][j]=Integer.valueOf(getWord(line,line.indexOf(" = ")+3,"?"));
+			}
+			
+			br.close();
+			
+			return init;
+			
+		} catch (Exception ex) {
+			ex.printStackTrace();
+		}
+		return null;
+	}
+
+	public static void generateSource(int NB_SITES, int NB_NODES) {
+		try {
+			File file = new File("C:/Users/josf9/git/Test/source_init");
+			FileWriter filewriter = new FileWriter(file);
+			BufferedWriter bw = new BufferedWriter(filewriter);
+
+			bw.write("NB_SITES = " + NB_SITES + "\n" + "NB_NODES = " + NB_NODES + "\n\n");
+
+			for (int site = 0; site < NB_SITES; site++) {
+				bw.write("nSite = " + site + "\n\n");
+				for (int node = 0; node < NB_NODES; node++) {
+					bw.write("nNode = " + node + "\n");
+					bw.write("cpuFrequency = " + "\n");
+					bw.write("cpuNodes = " + "\n");
+					bw.write("ram = " + "\n");
+					bw.write("hdd = " + "\n\n");
+				}
+			}
+
+			bw.close();
+
+		} catch (Exception ex) {
+			ex.printStackTrace();
+		}
+
 	}
 
 	public enum typeData {
@@ -76,7 +143,8 @@ public class TxtReader {
 			while ((line = bufferedReader.readLine()) != null) {
 				columns.get(0).add(Double.parseDouble(getWord(line, 0, ",")));
 				columns.get(1).add(getWord(line, line.indexOf(",") + 1, ","));
-				columns.get(2).add(Double.parseDouble(getWord(line, line.indexOf(",", line.indexOf(",") + 1) + 1, ",")));
+				columns.get(2)
+						.add(Double.parseDouble(getWord(line, line.indexOf(",", line.indexOf(",") + 1) + 1, ",")));
 			}
 
 			bufferedReader.close();

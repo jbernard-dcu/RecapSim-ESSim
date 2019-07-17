@@ -50,7 +50,7 @@ public final class Generation {
 	static final int[][] cpuFrequency = initSameValue(numberSites, numberNodesPerSite, 3000); // MIPS or 2.6 GHz
 	static final int[][] cpuCores = initSameValue(numberSites, numberNodesPerSite, 80);
 	static final int[][] ram = initSameValue(numberSites, numberNodesPerSite, 2048_000); // host memory (MEGABYTE)
-	static final int[][] hdd = initSameValue(numberSites, numberNodesPerSite, 1000000_000); // host storage (MEGABYTE)
+	static final int[][] hdd = initSameValue(numberSites, numberNodesPerSite, 1000_000_000); // host storage (MEGABYTE)
 	static final int bw = 10_000; // in 10Gbit/s
 
 	// Application landscape
@@ -555,10 +555,6 @@ public final class Generation {
 	 */
 	private static int shardAllocation(int shardId, int NB_NODES) {
 		return 2 + shardId % (NB_NODES - 2);
-	}
-	
-	public static int[][] initFromTxt(int nSites, int[] nbNodesPerSite) {
-		
 	}
 
 	/**
