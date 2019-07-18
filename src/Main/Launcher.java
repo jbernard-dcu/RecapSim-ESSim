@@ -87,7 +87,7 @@ public class Launcher {
 		/////////////////// WORKLOAD GENERATION
 		///////////////////////////////////////////////////////////////////////////////////////////////
 		
-		Workload workload = TxtReader.GenerateWorkload(3, writeOrRead.R,appLandscape);
+		Workload workload = Generation.GenerateYCSBWorkload(NB_PRIMARYSHARDS,appLandscape);
 		//Workload workload = Generation.GenerateSyntheticWorkload(termDist, NB_TERMSET, NB_REQUEST, appLandscape,shardBase);
 
 		///////////////////////////////////////////////////////////////////////////////////////////////
@@ -104,7 +104,7 @@ public class Launcher {
 		/////////////////// RESULTS
 		///////////////////////////////////////////////////////////////////////////////////////////////
 
-		launchSimulation(config);
+		//launchSimulation(config);
 
 	}
 

@@ -3,34 +3,20 @@ package Classes;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 
-import eu.recap.sim.models.ApplicationModel.ApplicationLandscape;
-import eu.recap.sim.models.WorkloadModel.Device;
-import eu.recap.sim.models.WorkloadModel.Request;
-import eu.recap.sim.models.WorkloadModel.Workload;
-
 public class TxtReader {
 
-	public static void main(String[] args) {
-		//System.out.println(getRequests(9, writeOrRead.W).toString());
-		calculateRepart();
-	}
-
-	/**
-	 * Method to calculate the approx. repartition of the requests among the 9 data
-	 * nodes
-	 */
-	public static int[] calculateRepart() {
-		int[] vms = { 111, 121, 122, 142, 143, 144, 149, 164, 212, 250 };
-
+	@SuppressWarnings({ "deprecation", "unchecked" })
+	public static List<List<Object>> mergeWorkloads() {
+		/*
+		 * Sorting requests from both workloads
+		 */
 		List<List<Object>> vRW = getRequests(9, writeOrRead.W);
 		List<List<Object>> vRR = getRequests(9, writeOrRead.R);
 
@@ -70,14 +56,67 @@ public class TxtReader {
 
 		}
 
-		//TODO compare the total workload with the nodes resource consumption
-		
-		/*
-		 * 
-		 */
-		
+		return vR;
+	}
 
-		return null;
+	/**
+	 * Method to calculate the approx. repartition of the requests among the data
+	 * nodes, based on CpuLoad
+	 */
+	@SuppressWarnings("unchecked")
+	public static double[] calculateRepart(int nbNodes) {
+
+		int[] vms = {};
+		switch (nbNodes) {
+		case 3:
+			vms = new int[] { 111, 144, 164 };
+			break;
+		case 9:
+			vms = new int[] { 111, 121, 122, 142, 143, 144, 164, 212, 250 }; // VM 149 not a data node
+			break;
+		default:
+			throw new IllegalArgumentException("nbNodes can only be 3 or 9");
+		}
+
+		// getting cpuLoads
+		List<List<Double>> cpuLoads = new ArrayList<List<Double>>();
+		for (int vm : vms) {
+			List<Double> add = (List<Double>) (List<?>) readMonitoring(nbNodes, typeData.CpuLoad, vm).get(2);
+			if (vm == 111)
+				add = add.subList(10, add.size()); // removing the 10 first values of VM111 to fit timestamps
+			cpuLoads.add(add);
+		}
+
+		// calculating normalized cpu load
+		List<List<Double>> normCpuLoads = new ArrayList<List<Double>>();
+
+		for (int field = 0; field < cpuLoads.size(); field++) {
+
+			List<Double> add = new ArrayList<Double>();
+
+			for (int time = 0; time < cpuLoads.get(field).size(); time++) {
+				double sum = 0;
+				for (int field2 = 0; field2 < cpuLoads.size(); field2++) {
+					sum += cpuLoads.get(field2).get(time);
+				}
+				add.add(cpuLoads.get(field).get(time) / sum);
+			}
+			normCpuLoads.add(add);
+		}
+
+		// average for each VM of the normalized cpu laod
+		double[] distribution = new double[vms.length];
+
+		for (int field = 0; field < normCpuLoads.size(); field++) {
+			double sum = 0;
+			for (int time = 0; time < normCpuLoads.get(field).size(); time++) {
+				sum += normCpuLoads.get(field).get(time);
+			}
+
+			distribution[field] = sum / normCpuLoads.get(field).size();
+		}
+
+		return distribution;
 
 	}
 
@@ -317,47 +356,6 @@ public class TxtReader {
 
 	public enum writeOrRead {
 		W, R
-	}
-
-	/**
-	 * Method to generate a workload from the input data (3/9 nodes).
-	 * 
-	 * @param pick        : choose <code>writeOrRead.W</code> to load load.txt,
-	 *                    <code>writeOrRead.R</code> to load transaction.txt
-	 * @param numberNodes : choose 3 or 9 to choose the workload
-	 */
-	@SuppressWarnings("deprecation")
-	public static Workload GenerateWorkload(int numberNodes, writeOrRead pick, ApplicationLandscape appLandscape)
-			throws FileNotFoundException {
-
-		// Reading input file
-		List<List<Object>> validRequest = getRequests(numberNodes, pick);
-
-		// Adding requests to device
-		Device.Builder device = Device.newBuilder();
-		for (int request = 0; request < validRequest.get(0).size(); request++) {
-			Request.Builder requestBuilder = Request.newBuilder();
-
-			SpecRequest spec = (SpecRequest) (validRequest.get(4).get(request));
-
-			requestBuilder.setTime(new Long(validRequest.get(0).get(request).toString())).setRequestId(request)
-					.setApplicationId(appLandscape.getApplications(0).getApplicationId()) // TODO generalize with
-																							// multiple applications
-					.setComponentId("1").setApiId("1_1").setExpectedDuration((int) spec.getAvgTime()) // TODO int vs
-																										// double ?
-					.setDataToTransfer(1);
-			// TODO set mipsDataNode, dataNodes
-
-			device.addRequests(requestBuilder.build());
-		}
-
-		// Adding device to workload
-		Workload.Builder workload = Workload.newBuilder();
-		workload.addDevices(device.build());
-
-		// return workload
-		return workload.build();
-
 	}
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////

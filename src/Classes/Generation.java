@@ -1,6 +1,8 @@
 package Classes;
 
+import java.io.FileNotFoundException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.TreeMap;
@@ -54,7 +56,7 @@ public final class Generation {
 	static final int bw = 10_000; // 10Gbit/s
 
 	// Application landscape
-	//VM memory and storage expressed in Mo
+	// VM memory and storage expressed in Mo
 	// all VMs are the same, TODO allow different configurations
 	/*
 	 * Values changed for german workload
@@ -62,7 +64,7 @@ public final class Generation {
 	final static int vmCores = 2;
 	final static int vmMemory = 4_000;
 	final static int vmStorage = 70_000;
-	
+
 	static int esClient_cores = 16;
 	static int esClient_memory = 112_000;
 	static int esClient_storage = 181_000;
@@ -206,11 +208,12 @@ public final class Generation {
 		ExpD exp = new ExpD(lambda);
 
 		// Creating ID generator
-		IDGenerator idGen = new IDGenerator();
+		long idLong = 0;
 
 		while (!freeSpace.isEmpty()) {
 			int space = freeSpace.get(0);
-			clientID = idGen.createID();
+			clientID = Long.toString(idLong);
+			idLong++;
 
 			while (space < NB_REQUEST) {
 				IDs[space] = clientID;
@@ -293,6 +296,69 @@ public final class Generation {
 		System.out.println("Workload generated:" + (System.currentTimeMillis() - startTime) + "ms");
 
 		return workloadBuilder.build();
+	}
+
+	/**
+	 * Method to generate a workload from the input data (3/9 nodes).
+	 * 
+	 * @param numberNodes : choose 3 or 9 to choose the workload
+	 */
+	public static Workload GenerateYCSBWorkload(int numberNodes, ApplicationLandscape appLandscape)
+			throws FileNotFoundException {
+
+		long startTime = System.currentTimeMillis();
+
+		// Reading input file
+		List<List<Object>> validRequest = TxtReader.mergeWorkloads();
+
+		// Calculating repartiton
+		double[] repart = TxtReader.calculateRepart(numberNodes);
+		// Cumsum of the repart
+		for (int i = 1; i < repart.length; i++) {
+			repart[i] += repart[i - 1];
+		}
+
+		// Adding requests to device TODO multiple devices
+		Device.Builder device = Device.newBuilder();
+		for (int request = 0; request < validRequest.get(0).size(); request++) {
+			Request.Builder requestBuilder = Request.newBuilder();
+
+			SpecRequest spec = (SpecRequest) (validRequest.get(5).get(request));
+
+			// Number of data nodes serving the request
+			int nNodesServingRequest = 1 + Launcher.NB_REPLICAS;
+
+			// Adding destination nodes
+			List<Integer> destinationNodes = new ArrayList<Integer>();
+			for (int cnode = 0; cnode < nNodesServingRequest; cnode++) {
+				double r = Math.random();
+				int i = 0;
+				while (r > repart[i]) {
+					i++;
+				}
+				destinationNodes.add(i);
+			}
+
+			Date dateRequest = (Date) validRequest.get(0).get(request);
+
+			requestBuilder.setTime(dateRequest.getTime()).setRequestId(request)
+					.setApplicationId(appLandscape.getApplications(0).getApplicationId()) // TODO multiple applications
+					.setComponentId("1").setApiId("1_1").setExpectedDuration((int) spec.getAvgTime())
+					.setDataToTransfer(1).setMipsDataNodes(Generation.ESToDataNode_mips)
+					.addAllDataNodes(destinationNodes);
+
+			device.addRequests(requestBuilder.build());
+		}
+
+		// Adding device to workload
+		Workload.Builder workload = Workload.newBuilder();
+		workload.addDevices(device.build());
+
+		System.out.println("Workload generated:" + (System.currentTimeMillis() - startTime) + "ms");
+
+		// return workload
+		return workload.build();
+
 	}
 
 	/**
@@ -615,17 +681,4 @@ public final class Generation {
 		return shard;
 	}
 
-}
-
-class IDGenerator {
-	private long id;
-
-	public IDGenerator() {
-		this.id = 0;
-	}
-
-	public String createID() {
-		this.id++;
-		return Long.toString(this.id);
-	}
 }
