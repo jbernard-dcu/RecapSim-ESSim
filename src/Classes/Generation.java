@@ -51,12 +51,18 @@ public final class Generation {
 	static final int[][] cpuCores = initSameValue(numberSites, numberNodesPerSite, 80);
 	static final int[][] ram = initSameValue(numberSites, numberNodesPerSite, 2048_000); // host memory (MEGABYTE)
 	static final int[][] hdd = initSameValue(numberSites, numberNodesPerSite, 1000_000_000); // host storage (MEGABYTE)
-	static final int bw = 10_000; // in 10Gbit/s
+	static final int bw = 10_000; // 10Gbit/s
 
 	// Application landscape
-	final static int vmCores = 8;
-	final static int vmMemory = 28_000;
-	final static int vmStorage = 1_081_000; // all VMs are the same, TODO allow different configurations
+	//VM memory and storage expressed in Mo
+	// all VMs are the same, TODO allow different configurations
+	/*
+	 * Values changed for german workload
+	 */
+	final static int vmCores = 2;
+	final static int vmMemory = 4_000;
+	final static int vmStorage = 70_000;
+	
 	static int esClient_cores = 16;
 	static int esClient_memory = 112_000;
 	static int esClient_storage = 181_000;

@@ -7,6 +7,9 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
 import java.util.List;
 
 import eu.recap.sim.models.ApplicationModel.ApplicationLandscape;
@@ -16,35 +19,98 @@ import eu.recap.sim.models.WorkloadModel.Workload;
 
 public class TxtReader {
 
+	public static void main(String[] args) {
+		//System.out.println(getRequests(9, writeOrRead.W).toString());
+		calculateRepart();
+	}
+
+	/**
+	 * Method to calculate the approx. repartition of the requests among the 9 data
+	 * nodes
+	 */
+	public static int[] calculateRepart() {
+		int[] vms = { 111, 121, 122, 142, 143, 144, 149, 164, 212, 250 };
+
+		List<List<Object>> vRW = getRequests(9, writeOrRead.W);
+		List<List<Object>> vRR = getRequests(9, writeOrRead.R);
+
+		List<Date> vRWdates = (List<Date>) (List<?>) vRW.get(0);
+		List<Date> vRRdates = (List<Date>) (List<?>) vRR.get(0);
+
+		List<List<Object>> vR = new ArrayList<List<Object>>();
+		for (int field = 0; field < 6; field++) {
+			vR.add(new ArrayList<Object>());
+		}
+
+		int indexWmin;
+		int indexRmin;
+		int indexMin;
+		List<List<Object>> vRmin;
+		for (int index = 0; index < vRWdates.size() + vRRdates.size(); index++) {
+			indexWmin = vRWdates.indexOf(Collections.min(vRWdates));
+			indexRmin = vRRdates.indexOf(Collections.min(vRRdates));
+
+			if (vRWdates.get(indexWmin).getTime() >= vRRdates.get(indexRmin).getTime()) {
+				indexMin = indexRmin;
+				vRmin = vRR;
+			} else {
+				indexMin = indexWmin;
+				vRmin = vRW;
+			}
+
+			for (int field = 0; field < 6; field++) {
+				vR.get(field).add(vRmin.get(field).get(indexMin));
+			}
+
+			if (vRmin.equals(vRW)) {
+				vRWdates.set(indexWmin, new Date(2020, 1, 1));
+			} else {
+				vRRdates.set(indexRmin, new Date(2020, 1, 1));
+			}
+
+		}
+
+		//TODO compare the total workload with the nodes resource consumption
+		
+		/*
+		 * 
+		 */
+		
+
+		return null;
+
+	}
+
 	public static int[][] initFromSource(String filepath, String choice) {
 		try {
 			FileReader fr = new FileReader(new File(filepath));
 			BufferedReader br = new BufferedReader(fr);
-			
+
 			String line = br.readLine();
-			int NB_SITES=Integer.valueOf(getWord(line,line.indexOf(" = ")+3,"?"));
-			line=br.readLine();
-			int NB_NODES=Integer.valueOf(getWord(line,line.indexOf(" = ")+3,"?"));
-			
-			int[][] init=new int[NB_SITES][NB_NODES];
-			
-			int i=0;int j=0;
-			while((line=br.readLine())!=null) {
-				
-				if(line.startsWith("nSite"))
-					i=Integer.valueOf(getWord(line,line.indexOf(" = ")+3,"?"));
-				
-				if(line.startsWith("nNode"))
-					j=Integer.valueOf(getWord(line,line.indexOf(" = ")+3,"?"));
-				
-				if(line.startsWith(choice))
-					init[i][j]=Integer.valueOf(getWord(line,line.indexOf(" = ")+3,"?"));
+			int NB_SITES = Integer.valueOf(getWord(line, line.indexOf(" = ") + 3, "?"));
+			line = br.readLine();
+			int NB_NODES = Integer.valueOf(getWord(line, line.indexOf(" = ") + 3, "?"));
+
+			int[][] init = new int[NB_SITES][NB_NODES];
+
+			int i = 0;
+			int j = 0;
+			while ((line = br.readLine()) != null) {
+
+				if (line.startsWith("nSite"))
+					i = Integer.valueOf(getWord(line, line.indexOf(" = ") + 3, "?"));
+
+				if (line.startsWith("nNode"))
+					j = Integer.valueOf(getWord(line, line.indexOf(" = ") + 3, "?"));
+
+				if (line.startsWith(choice))
+					init[i][j] = Integer.valueOf(getWord(line, line.indexOf(" = ") + 3, "?"));
 			}
-			
+
 			br.close();
-			
+
 			return init;
-			
+
 		} catch (Exception ex) {
 			ex.printStackTrace();
 		}
@@ -131,7 +197,7 @@ public class TxtReader {
 
 			while ((line = bufferedReader.readLine()) != null) {
 				columns.get(0).add(Double.parseDouble(getWord(line, 0, ",")));
-				columns.get(1).add(getWord(line, line.indexOf(",") + 1, ","));
+				columns.get(1).add(readTime2(getWord(line, line.indexOf(",") + 1, ",")));
 				columns.get(2)
 						.add(Double.parseDouble(getWord(line, line.indexOf(",", line.indexOf(",") + 1) + 1, ",")));
 			}
@@ -146,25 +212,7 @@ public class TxtReader {
 
 	}
 
-	public enum writeOrRead {
-		W, R
-	}
-
-	/**
-	 * Method to generate a workload from the input data (3/9 nodes).
-	 * 
-	 * @param pick        : choose <code>writeOrRead.W</code> to load load.txt,
-	 *                    <code>writeOrRead.R</code> to load transaction.txt
-	 * @param numberNodes : choose 3 or 9 to choose the workload
-	 */
-	public static Workload GenerateWorkload(int numberNodes, writeOrRead pick, ApplicationLandscape appLandscape)
-			throws FileNotFoundException {
-
-		//////////////////////////////////////////////////////////////////////////////////////////////////
-		///////////////////// READING INPUT FILE
-		//////////////////////////////////////////////////////////////////////////////////////////////////
-		//////////////////////////////////////////////////////////////////////////////////////////////////
-
+	public static List<List<Object>> getRequests(int numberNodes, writeOrRead pick) {
 		String path = "/elasticsearch_nodes-" + numberNodes + "_replication-3/nodes-" + numberNodes
 				+ "_replication-3/evaluation_run_2018_11_25-";
 		if (numberNodes == 3)
@@ -190,7 +238,7 @@ public class TxtReader {
 			FileReader fileReader = new FileReader(file);
 			BufferedReader bufferedReader = new BufferedReader(fileReader);
 
-			final int NB_FIELDS = 5;
+			final int NB_FIELDS = 6;
 
 			for (int field = 0; field < NB_FIELDS; field++) {
 				validRequest.add(new ArrayList<Object>());
@@ -200,8 +248,18 @@ public class TxtReader {
 
 				if (line.startsWith("2018") && !line.contains("Thread")) {
 
+					// Date
+					int start = 11;
+					int hours = Integer.parseInt(getWord(line, start, ":"));
+					int minutes = Integer.parseInt(getWord(line, start + 3, ":"));
+					int seconds = Integer.parseInt(getWord(line, start + 6, ":"));
+					int milliseconds = Integer.parseInt(getWord(line, start + 9, " "));
+					@SuppressWarnings("deprecation")
+					Date addDate = new Date(milliseconds + 1000 * seconds + 1000 * 60 * minutes + 1000 * 60 * 60 * hours
+							+ new Date(2018, 11, 25).getTime());
+
 					// Timestamp
-					int start = 24;
+					start = 24;
 					int addTime = Integer.parseInt(getWord(line, start, " "));
 
 					// Number of operations
@@ -224,20 +282,22 @@ public class TxtReader {
 
 					// Request type and add all
 					if (!line.contains("[")) {
-						validRequest.get(0).add(addTime);
-						validRequest.get(1).add(addNOp);
-						validRequest.get(2).add(addThroughput);
-						validRequest.get(3).add(addEstTime);
-						validRequest.get(4).add(new SpecRequest());
+						validRequest.get(0).add(addDate);
+						validRequest.get(1).add(addTime);
+						validRequest.get(2).add(addNOp);
+						validRequest.get(3).add(addThroughput);
+						validRequest.get(4).add(addEstTime);
+						validRequest.get(5).add(new SpecRequest());
 					} else {
 						start = line.indexOf("[", start) + 1;
 						// TODO fix
 						while (start > 0) {
-							validRequest.get(0).add(addTime);
-							validRequest.get(1).add(addNOp);
-							validRequest.get(2).add(addThroughput);
-							validRequest.get(3).add(addEstTime);
-							validRequest.get(4).add(new SpecRequest(getWord(line, start, "]")));
+							validRequest.get(0).add(addDate);
+							validRequest.get(1).add(addTime);
+							validRequest.get(2).add(addNOp);
+							validRequest.get(3).add(addThroughput);
+							validRequest.get(4).add(addEstTime);
+							validRequest.get(5).add(new SpecRequest(getWord(line, start, "]")));
 							start = line.indexOf("[", start) + 1;
 
 						}
@@ -252,10 +312,26 @@ public class TxtReader {
 			ex.printStackTrace();
 		}
 
-		//////////////////////////////////////////////////////////////////////////////////////////////////
-		///////////////////// GENERATING WORKLOAD
-		//////////////////////////////////////////////////////////////////////////////////////////////////
-		//////////////////////////////////////////////////////////////////////////////////////////////////
+		return validRequest;
+	}
+
+	public enum writeOrRead {
+		W, R
+	}
+
+	/**
+	 * Method to generate a workload from the input data (3/9 nodes).
+	 * 
+	 * @param pick        : choose <code>writeOrRead.W</code> to load load.txt,
+	 *                    <code>writeOrRead.R</code> to load transaction.txt
+	 * @param numberNodes : choose 3 or 9 to choose the workload
+	 */
+	@SuppressWarnings("deprecation")
+	public static Workload GenerateWorkload(int numberNodes, writeOrRead pick, ApplicationLandscape appLandscape)
+			throws FileNotFoundException {
+
+		// Reading input file
+		List<List<Object>> validRequest = getRequests(numberNodes, pick);
 
 		// Adding requests to device
 		Device.Builder device = Device.newBuilder();
@@ -297,6 +373,22 @@ public class TxtReader {
 	public static String getWord(String source, int start, String separator) {
 		return source.substring(start,
 				(source.substring(start).contains(separator)) ? source.indexOf(separator, start) : source.length());
+	}
+
+	@SuppressWarnings("deprecation")
+	public static Date readTime2(String time) {
+		Date date = new Date();
+
+		int start = 1 + time.indexOf("T");
+		date.setHours(Integer.valueOf(getWord(time, start, ":")));
+
+		start = 1 + time.indexOf(":", start);
+		date.setMinutes(Integer.valueOf(getWord(time, start, ":")));
+
+		start = 1 + time.indexOf(":", start);
+		date.setSeconds(Integer.valueOf(getWord(time, start, "Z")));
+
+		return date;
 	}
 
 	/**

@@ -35,7 +35,7 @@ public class Launcher {
 	// Parameters database
 	final static int NB_DOCS = 1_000;
 	public final static int NB_INDEX = 1;
-	public final static int NB_PRIMARYSHARDS = 3;
+	public final static int NB_PRIMARYSHARDS = 9;
 	public final static int NB_REPLICAS = 3; // per primary shard
 	public final static int NB_TOTALSHARDS = NB_PRIMARYSHARDS * (1 + NB_REPLICAS);
 
@@ -87,8 +87,8 @@ public class Launcher {
 		/////////////////// WORKLOAD GENERATION
 		///////////////////////////////////////////////////////////////////////////////////////////////
 		
-		//Workload workload = TxtReader.GenerateWorkload(3, writeOrRead.R,appLandscape);
-		Workload workload = Generation.GenerateSyntheticWorkload(termDist, NB_TERMSET, NB_REQUEST, appLandscape,shardBase);
+		Workload workload = TxtReader.GenerateWorkload(3, writeOrRead.R,appLandscape);
+		//Workload workload = Generation.GenerateSyntheticWorkload(termDist, NB_TERMSET, NB_REQUEST, appLandscape,shardBase);
 
 		///////////////////////////////////////////////////////////////////////////////////////////////
 		/////////////////// EXPERIMENT CONFIGURATION
