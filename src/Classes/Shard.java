@@ -109,7 +109,14 @@ public class Shard {
 	/////////////////////// OTHER METHODS, GETTERS, SETTERS
 	///////////////////////////////////////////////////////////////////////////////////////////
 	///////////////////////////////////////////////////////////////////////////////////////////
-
+	
+	@Override
+	public boolean equals(Object o) {
+		return o instanceof Shard 
+				&& o!=null
+				&& ((Shard)o).getId()==this.getId();
+	}
+	
 	public String toString() {
 		return Integer.toString(this.getId());
 	}

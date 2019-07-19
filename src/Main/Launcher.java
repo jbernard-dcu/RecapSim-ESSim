@@ -87,8 +87,8 @@ public class Launcher {
 		/////////////////// WORKLOAD GENERATION
 		///////////////////////////////////////////////////////////////////////////////////////////////
 		
-		Workload workload = Generation.GenerateYCSBWorkload(NB_PRIMARYSHARDS,appLandscape);
-		//Workload workload = Generation.GenerateSyntheticWorkload(termDist, NB_TERMSET, NB_REQUEST, appLandscape,shardBase);
+		//Workload workload = Generation.GenerateYCSBWorkload(NB_PRIMARYSHARDS,appLandscape);
+		Workload workload = Generation.GenerateSyntheticWorkload(termDist, NB_TERMSET, NB_REQUEST, appLandscape,shardBase);
 
 		///////////////////////////////////////////////////////////////////////////////////////////////
 		/////////////////// EXPERIMENT CONFIGURATION
@@ -104,7 +104,7 @@ public class Launcher {
 		/////////////////// RESULTS
 		///////////////////////////////////////////////////////////////////////////////////////////////
 
-		//launchSimulation(config);
+		launchSimulation(config);
 
 	}
 
@@ -177,7 +177,8 @@ public class Launcher {
 			requestSequence.add(dist.sample());
 		}
 
-		return requestSequence;
+		return requestSet;
+		//return requestSequence;
 
 	}
 

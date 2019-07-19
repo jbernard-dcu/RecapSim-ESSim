@@ -105,7 +105,9 @@ public class TxtReader {
 		}
 
 		// average for each VM of the normalized cpu laod
-		double[] distribution = new double[vms.length];
+		double[] distribution = new double[vms.length+2];
+		distribution[0]=0;
+		distribution[1]=0;
 
 		for (int field = 0; field < normCpuLoads.size(); field++) {
 			double sum = 0;
@@ -113,7 +115,7 @@ public class TxtReader {
 				sum += normCpuLoads.get(field).get(time);
 			}
 
-			distribution[field] = sum / normCpuLoads.get(field).size();
+			distribution[2+field] = sum / normCpuLoads.get(field).size();
 		}
 
 		return distribution;

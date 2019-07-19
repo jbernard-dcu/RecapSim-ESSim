@@ -4,7 +4,9 @@ import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.TreeMap;
 
 import Distribution.FreqD;
@@ -52,17 +54,16 @@ public final class Generation {
 	static final int[][] cpuFrequency = initSameValue(numberSites, numberNodesPerSite, 3000); // MIPS or 2.6 GHz
 	static final int[][] cpuCores = initSameValue(numberSites, numberNodesPerSite, 80);
 	static final int[][] ram = initSameValue(numberSites, numberNodesPerSite, 2048_000); // host memory (MEGABYTE)
-	static final int[][] hdd = initSameValue(numberSites, numberNodesPerSite, 1000_000_000); // host storage (MEGABYTE)
+	static final int[][] hdd = initSameValue(numberSites, numberNodesPerSite, 1_000_000_000); // host storage (MEGABYTE)
 	static final int bw = 10_000; // 10Gbit/s
 
 	// Application landscape
 	// VM memory and storage expressed in Mo
 	// all VMs are the same, TODO allow different configurations
-	/*
-	 * Values changed for german workload
-	 */
+
+	// Values changed for the german workload
 	final static int vmCores = 2;
-	final static int vmMemory = 4_000;
+	final static int vmMemory = 4_000; // 5,000 in output
 	final static int vmStorage = 70_000;
 
 	static int esClient_cores = 16;
@@ -108,13 +109,12 @@ public final class Generation {
 		for (ResourceSite site : infrastructure.getSitesList()) {
 			nodes.addAll(site.getNodesList());
 		}
-		int NB_NODES = nodes.size();
 
 		// Creating shards
 		List<Shard> shardBase = new ArrayList<Shard>();
 		int nodeId;
 		for (int shardId = 0; shardId < NB_TOTALSHARDS; shardId++) {
-			nodeId = shardAllocation(shardId, NB_NODES);
+			nodeId = shardAllocation(shardId, nodes.size());
 			shardBase.add(new Shard(nodes.get(nodeId), nodeId));
 		}
 		for (int indexShard = 0; indexShard < NB_TOTALSHARDS; indexShard++) {
@@ -195,21 +195,20 @@ public final class Generation {
 		 */
 
 		// Creating lists
-		String[] IDs = new String[NB_REQUEST]; // Each index corresponds to one request, the value is the clientID
-												// corresponding
 		List<Integer> freeSpace = new ArrayList<Integer>();
 		for (int i = 0; i < NB_REQUEST; i++) {
 			freeSpace.add(i);
 		}
-		String clientID;
 
 		// Creating Exp law
 		double lambda = 10. / NB_REQUEST;
 		ExpD exp = new ExpD(lambda);
 
-		// Creating ID generator
+		// Filling clientIds list
+		String clientID;
 		long idLong = 0;
-
+		String[] IDs = new String[NB_REQUEST]; // Each index corresponds to one request, the value is the clientID
+												// corresponding
 		while (!freeSpace.isEmpty()) {
 			int space = freeSpace.get(0);
 			clientID = Long.toString(idLong);
@@ -227,10 +226,11 @@ public final class Generation {
 		 */
 		List<Request.Builder> buildersRequests = Launcher.buildersRequests(termDist);
 		List<Request> requests = new ArrayList<Request>();
-		int i = 0;
+		Set<Integer> destinationNodes;
+		int time = 0;
 		// request.time and request.applicationId are set here
 		for (Request.Builder request : buildersRequests) {
-			request.setTime(timeSequence.get(i) - startTime);
+			request.setTime(timeSequence.get(time) - startTime);
 			request.setApplicationId(appLandscape.getApplicationsList().get(0).getApplicationId());
 
 			// TODO MIPS data node should depend on where the request is sent
@@ -240,6 +240,9 @@ public final class Generation {
 			 * Data nodes destinations for the request
 			 */
 			List<Long> searchContent = Launcher.unparse(request.getSearchContent());
+			
+			System.out.println("-------------------------------------------------");
+			System.out.println("Search content:"+searchContent.toString());
 
 			List<Shard> shardDist = new ArrayList<Shard>();
 			for (long word : searchContent) {
@@ -247,21 +250,34 @@ public final class Generation {
 				for (Shard shard : shardBase) {
 					if (shard.isPrimaryShard() && shard.getInvertedIndex().containsKey(word)
 							&& !shardDist.contains(shard)) {
-						System.out.println("Shard picked:" + shard.toString() + ", ");
+						System.out.println(">           " + shard.toString());
 						shardDist.add(shard);
+					} else {
+						System.out.println("> nc "+shard.getId());
 					}
 
 				}
 			}
+			
+			
+			System.out.println("shardDist:"+shardDist.toString());
+
+			destinationNodes = new HashSet<Integer>();
+			
+			System.out.println(request.getDataNodesList().toString());
+			
 			for (Shard dest : shardDist) {
-				request.addDataNodes(Integer.valueOf(dest.getNode().getId().substring(2)));
+				int add = Integer.valueOf(dest.getNode().getId().substring(2));
+				if (!destinationNodes.contains(add))
+					destinationNodes.add(add);
 			}
+			request.addAllDataNodes(destinationNodes);
 
 			System.out.println("Nodes:" + request.getDataNodesList().toString());
 
 			requests.add(request.build());
 
-			i++;
+			time++;
 		}
 
 		/*
@@ -311,41 +327,55 @@ public final class Generation {
 		// Reading input file
 		List<List<Object>> validRequest = TxtReader.mergeWorkloads();
 
-		// Calculating repartiton
+		// Calculating repartition
 		double[] repart = TxtReader.calculateRepart(numberNodes);
-		// Cumsum of the repart
+		// Cumulative sum of the repartition
 		for (int i = 1; i < repart.length; i++) {
 			repart[i] += repart[i - 1];
 		}
 
+		// Getting starting time of the requests
+		long dateInitialRequest = ((Date) validRequest.get(0).get(0)).getTime();
+
 		// Adding requests to device TODO multiple devices
 		Device.Builder device = Device.newBuilder();
 		for (int request = 0; request < validRequest.get(0).size(); request++) {
-			Request.Builder requestBuilder = Request.newBuilder();
 
 			SpecRequest spec = (SpecRequest) (validRequest.get(5).get(request));
 
 			// Number of data nodes serving the request
-			int nNodesServingRequest = 1 + Launcher.NB_REPLICAS;
-
+			int nNodesServingRequest = Launcher.randGint(numberNodes / 2., numberNodes / 6.);
 			// Adding destination nodes
-			List<Integer> destinationNodes = new ArrayList<Integer>();
-			for (int cnode = 0; cnode < nNodesServingRequest; cnode++) {
+			HashSet<Integer> dataNodeDestination = new HashSet<Integer>();
+			while (dataNodeDestination.size() < nNodesServingRequest) {
 				double r = Math.random();
-				int i = 0;
-				while (r > repart[i]) {
-					i++;
+				int destinationNode = 0;
+				while (r > repart[destinationNode]) {
+					destinationNode++;
 				}
-				destinationNodes.add(i);
+
+				destinationNode++;
+
+				if (!dataNodeDestination.contains(destinationNode))
+					dataNodeDestination.add(destinationNode);
 			}
 
-			Date dateRequest = (Date) validRequest.get(0).get(request);
+			long dateRequest = ((Date) validRequest.get(0).get(request)).getTime();
 
-			requestBuilder.setTime(dateRequest.getTime()).setRequestId(request)
-					.setApplicationId(appLandscape.getApplications(0).getApplicationId()) // TODO multiple applications
-					.setComponentId("1").setApiId("1_1").setExpectedDuration((int) spec.getAvgTime())
-					.setDataToTransfer(1).setMipsDataNodes(Generation.ESToDataNode_mips)
-					.addAllDataNodes(destinationNodes);
+			Request.Builder requestBuilder = Request.newBuilder();
+
+			requestBuilder.setTime(dateRequest - dateInitialRequest);
+			requestBuilder.setRequestId(request + 1);
+			requestBuilder.setApplicationId(appLandscape.getApplications(0).getApplicationId()); // TODO multiple
+																									// applications
+			requestBuilder.setComponentId("1");
+			requestBuilder.setApiId("1_1");
+			requestBuilder.setExpectedDuration((int) spec.getAvgTime());
+			requestBuilder.setDataToTransfer(1);
+			requestBuilder.setMipsDataNodes(Generation.ESToDataNode_mips);
+			requestBuilder.addAllDataNodes(dataNodeDestination);
+
+			System.out.println(dataNodeDestination.toString());
 
 			device.addRequests(requestBuilder.build());
 		}
@@ -384,7 +414,8 @@ public final class Generation {
 		int indexNmberOfNodes = nodeIds.size() - 1;
 
 		int nodesCounter = 0;
-		for (int appCounter = 0; appCounter < appQty; appCounter++) {
+		int appCounter = 1;
+		while (appCounter - 1 != appQty) {
 			/*
 			 * New application builder
 			 */
@@ -522,6 +553,8 @@ public final class Generation {
 
 			applicationLandscapeBuilder.addApplications(appBuilder.build());
 
+			appCounter++;
+
 		}
 
 		System.out.println("ApplicationLandscape generated:" + (System.currentTimeMillis() - startTime) + "ms");
@@ -548,47 +581,47 @@ public final class Generation {
 		link.setBandwith(bw);
 
 		// create sites
-		for (int i = 0; i < numberSites; i++) {
+		for (int nSite = 0; nSite < numberSites; nSite++) {
 
 			ResourceSite.Builder site = ResourceSite.newBuilder();
-			site.setName("Site_" + i);
-			site.setId(i + "");
+			site.setName("Site_" + nSite);
+			site.setId(nSite + "");
 
 			Location.Builder geolocation = Location.newBuilder();
-			geolocation.setLatitude(i);
-			geolocation.setLongitude(i);
+			geolocation.setLatitude(nSite);
+			geolocation.setLongitude(nSite);
 
 			site.setLocation(geolocation.build());
 			site.setHierarchyLevel(SiteLevel.Edge);
 
 			// create nodes
-			for (int j = 0; j < numberNodesPerSite[i]; j++) {
+			for (int nNode = 0; nNode < numberNodesPerSite[nSite]; nNode++) {
 
 				Node.Builder node = Node.newBuilder();
-				node.setName("Node_" + i + "_" + j);
-				node.setId(i + "_" + j);
+				node.setName("Node_" + nSite + "_" + nNode);
+				node.setId(nSite + "_" + nNode);
 
 				// TODO parameters cpu builder
 				CPU.Builder cpu = CPU.newBuilder();
-				cpu.setName("Xeon_" + i + "_" + j);
-				cpu.setId(i + "_" + j);
+				cpu.setName("Xeon_" + nSite + "_" + nNode);
+				cpu.setId(nSite + "_" + nNode);
 				cpu.setMake("Intel");
 				cpu.setRating("12345");
-				cpu.setFrequency(cpuFrequency[i][j]);
+				cpu.setFrequency(cpuFrequency[nSite][nNode]);
 				// create cores
-				for (int e = 0; e < cpuCores[i][j]; e++) {
+				for (int e = 0; e < cpuCores[nSite][nNode]; e++) {
 					Core.Builder core = Core.newBuilder();
-					core.setId(i + "_" + j + "_" + e);
+					core.setId(nSite + "_" + nNode + "_" + e);
 					cpu.addCpuCores(core.build());
 				}
 
 				Memory.Builder memory = Memory.newBuilder();
-				memory.setId(i + "_" + j);
-				memory.setCapacity(ram[i][j]);
+				memory.setId(nSite + "_" + nNode);
+				memory.setCapacity(ram[nSite][nNode]);
 
 				Storage.Builder storage = Storage.newBuilder();
-				storage.setId(i + "_" + j);
-				storage.setSize(hdd[i][j]);
+				storage.setId(nSite + "_" + nNode);
+				storage.setSize(hdd[nSite][nNode]);
 
 				// add resources to node
 				node.addProcessingUnits(cpu.build());
