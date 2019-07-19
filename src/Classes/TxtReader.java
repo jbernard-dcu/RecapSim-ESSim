@@ -64,7 +64,7 @@ public class TxtReader {
 	 * nodes, based on CpuLoad
 	 */
 	@SuppressWarnings("unchecked")
-	public static double[] calculateRepart(int nbNodes) {
+	public static Double[] calculateRepart(int nbNodes) {
 
 		int[] vms = {};
 		switch (nbNodes) {
@@ -105,9 +105,7 @@ public class TxtReader {
 		}
 
 		// average for each VM of the normalized cpu laod
-		double[] distribution = new double[vms.length+2];
-		distribution[0]=0;
-		distribution[1]=0;
+		Double[] distribution = new Double[vms.length];
 
 		for (int field = 0; field < normCpuLoads.size(); field++) {
 			double sum = 0;
@@ -115,7 +113,7 @@ public class TxtReader {
 				sum += normCpuLoads.get(field).get(time);
 			}
 
-			distribution[2+field] = sum / normCpuLoads.get(field).size();
+			distribution[field] = sum / normCpuLoads.get(field).size();
 		}
 
 		return distribution;

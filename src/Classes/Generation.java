@@ -2,6 +2,7 @@ package Classes;
 
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -226,7 +227,6 @@ public final class Generation {
 		 */
 		List<Request.Builder> buildersRequests = Launcher.buildersRequests(termDist);
 		List<Request> requests = new ArrayList<Request>();
-		Set<Integer> destinationNodes;
 		int time = 0;
 		// request.time and request.applicationId are set here
 		for (Request.Builder request : buildersRequests) {
@@ -240,9 +240,9 @@ public final class Generation {
 			 * Data nodes destinations for the request
 			 */
 			List<Long> searchContent = Launcher.unparse(request.getSearchContent());
-			
+
 			System.out.println("-------------------------------------------------");
-			System.out.println("Search content:"+searchContent.toString());
+			System.out.println("Search content:" + searchContent.toString());
 
 			List<Shard> shardDist = new ArrayList<Shard>();
 			for (long word : searchContent) {
@@ -250,28 +250,20 @@ public final class Generation {
 				for (Shard shard : shardBase) {
 					if (shard.isPrimaryShard() && shard.getInvertedIndex().containsKey(word)
 							&& !shardDist.contains(shard)) {
-						System.out.println(">           " + shard.toString());
+						System.out.println("> " + shard.toString());
 						shardDist.add(shard);
-					} else {
-						System.out.println("> nc "+shard.getId());
 					}
-
 				}
 			}
-			
-			
-			System.out.println("shardDist:"+shardDist.toString());
 
-			destinationNodes = new HashSet<Integer>();
-			
-			System.out.println(request.getDataNodesList().toString());
-			
+			System.out.println("shardDist:" + shardDist.toString());
+
+			List<Integer> destinationNodes = request.getDataNodesList();
 			for (Shard dest : shardDist) {
-				int add = Integer.valueOf(dest.getNode().getId().substring(2));
+				int add = Integer.valueOf(dest.getNode().getId().substring(2)) - 1; // counting starts at 1
 				if (!destinationNodes.contains(add))
-					destinationNodes.add(add);
+					request.addDataNodes(add);
 			}
-			request.addAllDataNodes(destinationNodes);
 
 			System.out.println("Nodes:" + request.getDataNodesList().toString());
 
@@ -327,12 +319,13 @@ public final class Generation {
 		// Reading input file
 		List<List<Object>> validRequest = TxtReader.mergeWorkloads();
 
-		// Calculating repartition
-		double[] repart = TxtReader.calculateRepart(numberNodes);
-		// Cumulative sum of the repartition
-		for (int i = 1; i < repart.length; i++) {
-			repart[i] += repart[i - 1];
+		// Calculating frequency distribution
+		List<Integer> nodeIds = new ArrayList<Integer>();
+		for(int nodeId=1;nodeId<=numberNodes;nodeId++) {
+			nodeIds.add(nodeId);
 		}
+		List<Double> distribution = Arrays.asList(TxtReader.calculateRepart(numberNodes));
+		FreqD<Integer> nodeDist = new FreqD<Integer>(nodeIds,distribution);
 
 		// Getting starting time of the requests
 		long dateInitialRequest = ((Date) validRequest.get(0).get(0)).getTime();
@@ -348,14 +341,7 @@ public final class Generation {
 			// Adding destination nodes
 			HashSet<Integer> dataNodeDestination = new HashSet<Integer>();
 			while (dataNodeDestination.size() < nNodesServingRequest) {
-				double r = Math.random();
-				int destinationNode = 0;
-				while (r > repart[destinationNode]) {
-					destinationNode++;
-				}
-
-				destinationNode++;
-
+				int destinationNode = nodeDist.sample();
 				if (!dataNodeDestination.contains(destinationNode))
 					dataNodeDestination.add(destinationNode);
 			}

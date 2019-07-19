@@ -29,8 +29,8 @@ public class Launcher {
 	final static int STD_NWDOC = 5;
 
 	// Parameters termSet and querySet
-	final static int NB_TERMSET = 100_000;
-	final static int NB_REQUEST = 5;
+	final static int NB_TERMSET = 10_000;
+	final static int NB_REQUEST = 2;
 
 	// Parameters database
 	final static int NB_DOCS = 1_000;
@@ -87,8 +87,8 @@ public class Launcher {
 		/////////////////// WORKLOAD GENERATION
 		///////////////////////////////////////////////////////////////////////////////////////////////
 		
-		//Workload workload = Generation.GenerateYCSBWorkload(NB_PRIMARYSHARDS,appLandscape);
-		Workload workload = Generation.GenerateSyntheticWorkload(termDist, NB_TERMSET, NB_REQUEST, appLandscape,shardBase);
+		Workload workload = Generation.GenerateYCSBWorkload(NB_PRIMARYSHARDS,appLandscape);
+		//Workload workload = Generation.GenerateSyntheticWorkload(termDist, NB_TERMSET, NB_REQUEST, appLandscape,shardBase);
 
 		///////////////////////////////////////////////////////////////////////////////////////////////
 		/////////////////// EXPERIMENT CONFIGURATION
@@ -151,7 +151,6 @@ public class Launcher {
 	 * generates a List of nbRequest Request.Builders</br>
 	 * searchContent, ComponentId, apiId, requestId, dataToTransfer and 
 	 * ExpectedDuration are set here</br>
-	 * TODO : add as many settings as possible
 	 */
 	public static List<Request.Builder> buildersRequests(TreeMap<Long, Double> termDist) {
 		// Generating RequestSet and RequestScores
@@ -162,9 +161,8 @@ public class Launcher {
 			requestBuilder.setSearchContent(randQueryContent(termDist, randGint(AVG_NWREQ, STD_NWREQ)));
 			requestBuilder.setComponentId("1").setApiId("1_1").setRequestId(nR).setDataToTransfer(1)
 					.setExpectedDuration(100); // TODO change !
-			// TODO requestBuilder.set...
 			requestSet.add(requestBuilder);
-			requestScores.add(getWeight(requestBuilder.build()));
+			requestScores.add(getWeight(requestBuilder.build(),termDist));
 
 		}
 
@@ -177,20 +175,20 @@ public class Launcher {
 			requestSequence.add(dist.sample());
 		}
 
-		return requestSet;
-		//return requestSequence;
+		//return requestSet;
+		return requestSequence;
 
 	}
 
 	/**
-	 * Returns the score of the query</br>
+	 * Returns the weight of the query</br>
 	 * Change this method to change way of valorising requests.
 	 */
-	public static double getWeight(Request r) {
+	public static double getWeight(Request r, TreeMap<Long,Double> termDist) {
 		List<Long> content = unparse(r.getSearchContent());
 		double score = 0.;
 		for (long term : content) {
-			score += 1. / term;
+			score += termDist.get(term);
 		}
 		return score / content.size();
 	}

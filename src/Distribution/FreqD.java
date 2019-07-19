@@ -1,6 +1,7 @@
 package Distribution;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.TreeMap;
 
@@ -10,20 +11,17 @@ public class FreqD<T> {
 	private List<Double> freq;
 	private List<Double> cumSum;
 
-	public FreqD(List<T> dataset, List<Double> freq) {
-		this.dataset = dataset;
-		this.freq = freq;
+	public FreqD(Collection<T> dataset, Collection<Double> freq) {
+		if(dataset.size()!=freq.size())
+			throw new IllegalArgumentException("dataset and freq must be the same size");
+		
+		this.dataset = new ArrayList<T>(dataset);
+		this.freq = new ArrayList<Double>(freq);
 		this.cumSum = calculateCumSum(this.freq);
 	}
 
 	public FreqD(TreeMap<T, Double> termDist) {
-		this.dataset = new ArrayList<T>();
-		this.freq = new ArrayList<Double>();
-
-		this.dataset.addAll(termDist.keySet());
-		this.freq.addAll(termDist.values());
-
-		this.cumSum = calculateCumSum(this.freq);
+		this(termDist.keySet(), termDist.values());
 	}
 
 	public List<Double> calculateCumSum(List<Double> freq) {
