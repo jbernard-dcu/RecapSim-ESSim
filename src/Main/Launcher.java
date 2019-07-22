@@ -20,39 +20,42 @@ import eu.recap.sim.models.WorkloadModel.*;
 
 public class Launcher {
 
+	/*
+	 * Parameters synthetic workload
+	 */
 	// Parameters nbWord request
 	final static double AVG_NWREQ = 4.;
 	final static double STD_NWREQ = 2.;
-
 	// Parameters nbWord document
 	final static int AVG_NWDOC = 10;
 	final static int STD_NWDOC = 5;
-
-	// Parameters termSet and querySet
+	// Parameters termSet and requestSet
 	final static int NB_TERMSET = 10_000;
-	final static int NB_REQUEST = 2;
-
+	public final static int NB_REQUEST = 10;
 	// Parameters database
 	final static int NB_DOCS = 1_000;
+	// Parameters search results
+	final static double p_DOC = .2; // We only give the p_DOC*NB_DOCS best documents for results
+
+	/*
+	 * Common parameters
+	 */
+	// Parameters database
 	public final static int NB_INDEX = 1;
 	public final static int NB_PRIMARYSHARDS = 9;
 	public final static int NB_REPLICAS = 3; // per primary shard
 	public final static int NB_TOTALSHARDS = NB_PRIMARYSHARDS * (1 + NB_REPLICAS);
-
 	// Parameters ApplicationModel
 	final static int NB_APPS = 1;
-
-	// Parameters search results
-	final static double p_DOC = .2; // We only give the p_DOC*NB_DOCS best documents for results
 
 	public static void main(String[] args) throws Exception {
 
 		///////////////////////////////////////////////////////////////////////////////////////////////
 		/////////////////// DATABASE GENERATION
 		///////////////////////////////////////////////////////////////////////////////////////////////
-		
-		TreeMap<Long,Double> termDist = BasicZipfDist(NB_TERMSET);
-		//TreeMap<Long, Double> termDist = UnifDist(NB_TERMSET);
+
+		TreeMap<Long, Double> termDist = BasicZipfDist(NB_TERMSET);
+		// TreeMap<Long, Double> termDist = UnifDist(NB_TERMSET);
 
 		List<Document> data = Generation.GenerateDatabase(termDist, NB_DOCS, AVG_NWDOC, STD_NWDOC);
 
@@ -86,9 +89,10 @@ public class Launcher {
 		///////////////////////////////////////////////////////////////////////////////////////////////
 		/////////////////// WORKLOAD GENERATION
 		///////////////////////////////////////////////////////////////////////////////////////////////
-		
-		Workload workload = Generation.GenerateYCSBWorkload(NB_PRIMARYSHARDS,appLandscape);
-		//Workload workload = Generation.GenerateSyntheticWorkload(termDist, NB_TERMSET, NB_REQUEST, appLandscape,shardBase);
+
+		Workload workload = Generation.GenerateYCSBWorkload(NB_PRIMARYSHARDS, appLandscape);
+		// Workload workload = Generation.GenerateSyntheticWorkload(termDist,
+		// NB_TERMSET, NB_REQUEST, appLandscape, shardBase);
 
 		///////////////////////////////////////////////////////////////////////////////////////////////
 		/////////////////// EXPERIMENT CONFIGURATION
@@ -130,11 +134,11 @@ public class Launcher {
 		}
 		return res;
 	}
-	
-	public static TreeMap<Long, Double> UnifDist(int nbTermSet){
+
+	public static TreeMap<Long, Double> UnifDist(int nbTermSet) {
 		TreeMap<Long, Double> res = new TreeMap<Long, Double>();
-		for(long i=0;i<nbTermSet;i++) {
-			res.put(i,1./nbTermSet);
+		for (long i = 0; i < nbTermSet; i++) {
+			res.put(i, 1. / nbTermSet);
 		}
 		return res;
 	}
@@ -149,33 +153,33 @@ public class Launcher {
 
 	/**
 	 * generates a List of nbRequest Request.Builders</br>
-	 * searchContent, ComponentId, apiId, requestId, dataToTransfer and 
+	 * searchContent, ComponentId, apiId, requestId, dataToTransfer and
 	 * ExpectedDuration are set here</br>
 	 */
 	public static List<Request.Builder> buildersRequests(TreeMap<Long, Double> termDist) {
 		// Generating RequestSet and RequestScores
 		List<Request.Builder> requestSet = new ArrayList<Request.Builder>();
 		List<Double> requestScores = new ArrayList<Double>();
-		for (int nR = 0; nR < NB_REQUEST; nR++) {
+		for (int nR = 1; nR <= NB_REQUEST; nR++) {
 			Request.Builder requestBuilder = Request.newBuilder();
 			requestBuilder.setSearchContent(randQueryContent(termDist, randGint(AVG_NWREQ, STD_NWREQ)));
 			requestBuilder.setComponentId("1").setApiId("1_1").setRequestId(nR).setDataToTransfer(1)
 					.setExpectedDuration(100); // TODO change !
 			requestSet.add(requestBuilder);
-			requestScores.add(getWeight(requestBuilder.build(),termDist));
+			requestScores.add(getWeight(requestBuilder.build(), termDist));
 
 		}
 
 		// Generating distribution
-		FreqD<Request.Builder> dist = new FreqD<Request.Builder>(requestSet, requestScores);
+		FreqD<Request.Builder> requestDist = new FreqD<Request.Builder>(requestSet, requestScores);
 
 		// Picking requests
 		List<Request.Builder> requestSequence = new ArrayList<Request.Builder>();
 		for (int req = 0; req < NB_REQUEST; req++) {
-			requestSequence.add(dist.sample());
+			requestSequence.add(requestDist.sample());
 		}
 
-		//return requestSet;
+		// return requestSet;
 		return requestSequence;
 
 	}
@@ -184,7 +188,7 @@ public class Launcher {
 	 * Returns the weight of the query</br>
 	 * Change this method to change way of valorising requests.
 	 */
-	public static double getWeight(Request r, TreeMap<Long,Double> termDist) {
+	public static double getWeight(Request r, TreeMap<Long, Double> termDist) {
 		List<Long> content = unparse(r.getSearchContent());
 		double score = 0.;
 		for (long term : content) {
@@ -193,14 +197,18 @@ public class Launcher {
 		return score / content.size();
 	}
 
+	public static int randGint(double avg, double std, int lowerBound, int upperBound) {
+		int res = (int) (avg + std * new Random().nextGaussian());
+		return (res <= lowerBound) ? lowerBound : (res >= upperBound) ? upperBound : res;
+	}
+
 	/**
 	 * Random integer number with a gaussian distribution</br>
 	 * Change parameters or this to have a different distribution of the length of
 	 * words
 	 */
 	public static int randGint(double avg, double std) {
-		int res = (int) (avg + std * new Random().nextGaussian());
-		return (res <= 0) ? (int) avg : res;
+		return randGint(avg, std, 0, Integer.MAX_VALUE);
 	}
 
 	/**

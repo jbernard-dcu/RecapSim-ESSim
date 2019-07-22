@@ -11,6 +11,10 @@ import java.util.Date;
 import java.util.List;
 
 public class TxtReader {
+	
+	public static void calculateMips() {
+		
+	}
 
 	@SuppressWarnings({ "deprecation", "unchecked" })
 	public static List<List<Object>> mergeWorkloads() {
@@ -75,7 +79,7 @@ public class TxtReader {
 			vms = new int[] { 111, 121, 122, 142, 143, 144, 164, 212, 250 }; // VM 149 not a data node
 			break;
 		default:
-			throw new IllegalArgumentException("nbNodes can only be 3 or 9");
+			throw new IllegalArgumentException("nbNodes can only be 3 or 9 using GenerateYCSBWorkload");
 		}
 
 		// getting cpuLoads
@@ -83,7 +87,7 @@ public class TxtReader {
 		for (int vm : vms) {
 			List<Double> add = (List<Double>) (List<?>) readMonitoring(nbNodes, typeData.CpuLoad, vm).get(2);
 			if (vm == 111)
-				add = add.subList(10, add.size()); // removing the 10 first values of VM111 to fit timestamps
+				add = add.subList(10, add.size()); // removing the 10 first values of VM111 to align timestamps
 			cpuLoads.add(add);
 		}
 
@@ -104,7 +108,7 @@ public class TxtReader {
 			normCpuLoads.add(add);
 		}
 
-		// average for each VM of the normalized cpu laod
+		// average for each VM of the normalized cpu load
 		Double[] distribution = new Double[vms.length];
 
 		for (int field = 0; field < normCpuLoads.size(); field++) {
@@ -236,7 +240,7 @@ public class TxtReader {
 
 			while ((line = bufferedReader.readLine()) != null) {
 				columns.get(0).add(Double.parseDouble(getWord(line, 0, ",")));
-				columns.get(1).add(readTime2(getWord(line, line.indexOf(",") + 1, ",")));
+				columns.get(1).add(readTimeMonitoring(getWord(line, line.indexOf(",") + 1, ",")));
 				columns.get(2)
 						.add(Double.parseDouble(getWord(line, line.indexOf(",", line.indexOf(",") + 1) + 1, ",")));
 			}
@@ -316,7 +320,7 @@ public class TxtReader {
 					long addEstTime = 0;
 					if (line.contains("est completion in")) {
 						start = line.indexOf("est completion in", start) + 18;
-						addEstTime = readTime(getWord(line, start, "["));
+						addEstTime = readTimeWorkload(getWord(line, start, "["));
 					}
 
 					// Request type and add all
@@ -329,7 +333,6 @@ public class TxtReader {
 						validRequest.get(5).add(new SpecRequest());
 					} else {
 						start = line.indexOf("[", start) + 1;
-						// TODO fix
 						while (start > 0) {
 							validRequest.get(0).add(addDate);
 							validRequest.get(1).add(addTime);
@@ -374,7 +377,7 @@ public class TxtReader {
 	}
 
 	@SuppressWarnings("deprecation")
-	public static Date readTime2(String time) {
+	public static Date readTimeMonitoring(String time) {
 		Date date = new Date();
 
 		int start = 1 + time.indexOf("T");
@@ -393,7 +396,7 @@ public class TxtReader {
 	 * Calculates and returns the time in seconds from the textual format used in
 	 * the data txt files
 	 */
-	public static long readTime(String time) {
+	public static long readTimeWorkload(String time) {
 		int index = 0;
 		long res = 0;
 		int mult = 0;
@@ -482,5 +485,12 @@ class SpecRequest {
 	 */
 	public double getAvgTime() {
 		return this.avg;
+	}
+	
+	/**
+	 * Return the number of operations performed for this request
+	 */
+	public int getnbOpCount() {
+		return this.count;
 	}
 }

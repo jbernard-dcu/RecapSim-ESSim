@@ -1,6 +1,7 @@
 package Distribution;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.TreeMap;
@@ -22,6 +23,10 @@ public class FreqD<T> {
 
 	public FreqD(TreeMap<T, Double> termDist) {
 		this(termDist.keySet(), termDist.values());
+	}
+	
+	public FreqD(List<T> dataset,Double[] distribution) {
+		this(dataset,Arrays.asList(distribution));
 	}
 
 	public List<Double> calculateCumSum(List<Double> freq) {

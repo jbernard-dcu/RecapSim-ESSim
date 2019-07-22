@@ -319,25 +319,37 @@ public final class Generation {
 		// Reading input file
 		List<List<Object>> validRequest = TxtReader.mergeWorkloads();
 
+		// For quicker testing
+		List<List<Object>> test = new ArrayList<List<Object>>();
+		for (int field = 0; field < validRequest.size(); field++) {
+			test.add(new ArrayList<Object>());
+		}
+		for (int time = 0; time < Launcher.NB_REQUEST; time++) {
+			for (int field = 0; field < validRequest.size(); field++) {
+				test.get(field).add(validRequest.get(field).get(time));
+			}
+		}
+		validRequest = test;
+
 		// Calculating frequency distribution
 		List<Integer> nodeIds = new ArrayList<Integer>();
-		for(int nodeId=1;nodeId<=numberNodes;nodeId++) {
+		for (int nodeId = 1; nodeId <= numberNodes; nodeId++) {
 			nodeIds.add(nodeId);
 		}
-		List<Double> distribution = Arrays.asList(TxtReader.calculateRepart(numberNodes));
-		FreqD<Integer> nodeDist = new FreqD<Integer>(nodeIds,distribution);
+		FreqD<Integer> nodeDist = new FreqD<Integer>(nodeIds, TxtReader.calculateRepart(numberNodes));
 
 		// Getting starting time of the requests
 		long dateInitialRequest = ((Date) validRequest.get(0).get(0)).getTime();
 
-		// Adding requests to device TODO multiple devices
+		// Adding requests to device
 		Device.Builder device = Device.newBuilder();
 		for (int request = 0; request < validRequest.get(0).size(); request++) {
 
 			SpecRequest spec = (SpecRequest) (validRequest.get(5).get(request));
 
 			// Number of data nodes serving the request
-			int nNodesServingRequest = Launcher.randGint(numberNodes / 2., numberNodes / 6.);
+			int nNodesServingRequest = Launcher.randGint(numberNodes / 2., numberNodes / 6., 0, numberNodes);
+
 			// Adding destination nodes
 			HashSet<Integer> dataNodeDestination = new HashSet<Integer>();
 			while (dataNodeDestination.size() < nNodesServingRequest) {
@@ -349,19 +361,25 @@ public final class Generation {
 			long dateRequest = ((Date) validRequest.get(0).get(request)).getTime();
 
 			Request.Builder requestBuilder = Request.newBuilder();
-
 			requestBuilder.setTime(dateRequest - dateInitialRequest);
 			requestBuilder.setRequestId(request + 1);
-			requestBuilder.setApplicationId(appLandscape.getApplications(0).getApplicationId()); // TODO multiple
-																									// applications
+
+			// TODO multiple applications
+			requestBuilder.setApplicationId(appLandscape.getApplications(0).getApplicationId());
+
 			requestBuilder.setComponentId("1");
 			requestBuilder.setApiId("1_1");
-			requestBuilder.setExpectedDuration((int) spec.getAvgTime());
-			requestBuilder.setDataToTransfer(1);
-			requestBuilder.setMipsDataNodes(Generation.ESToDataNode_mips);
-			requestBuilder.addAllDataNodes(dataNodeDestination);
 
-			System.out.println(dataNodeDestination.toString());
+			// TODO calculate data to transfer
+			requestBuilder.setDataToTransfer(1);
+
+			// TODO calculate expected duration
+			requestBuilder.setExpectedDuration(100);
+
+			// TODO calculate MIPS for request, fix bug zero
+			requestBuilder.setMipsDataNodes(Generation.DataNodeToES_mips);
+
+			requestBuilder.addAllDataNodes(dataNodeDestination);
 
 			device.addRequests(requestBuilder.build());
 		}

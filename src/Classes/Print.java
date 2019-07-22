@@ -1,6 +1,7 @@
 package Classes;
 
 import java.util.List;
+import java.util.TreeMap;
 
 import Main.Launcher;
 import eu.recap.sim.models.WorkloadModel.Device;
@@ -57,7 +58,7 @@ public class Print {
 	 * Prints the specified workload in a column format</br>
 	 * Request, Time, Device, Score
 	 */
-	public static void printWorkload(Workload workload, long startTime) {
+	public static void printWorkload(Workload workload, TreeMap<Long,Double> termDist, long startTime) {
 		String configPrintf = "%32s %1s %8s %1s %6s %1s %17s";
 		System.out.printf(configPrintf, "Request", "|", "Time", "|", "Device", "|", "Score\n");
 		System.out.println("----------------------------------------------------------------------------------");
@@ -65,7 +66,7 @@ public class Print {
 			for (Request request : device.getRequestsList()) {
 				System.out.printf(configPrintf, request.getSearchContent().toString(), "|",
 						(request.getTime() - startTime), "|", device.getDeviceId(), "|",
-						Launcher.getWeight(request) + "\n");
+						Launcher.getWeight(request, termDist) + "\n");
 			}
 		}
 
