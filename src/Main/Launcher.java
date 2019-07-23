@@ -55,7 +55,7 @@ public class Launcher {
 		///////////////////////////////////////////////////////////////////////////////////////////////
 
 		TreeMap<Long, Double> termDist = BasicZipfDist(NB_TERMSET);
-		// TreeMap<Long, Double> termDist = UnifDist(NB_TERMSET);
+		//TreeMap<Long, Double> termDist = UnifDist(NB_TERMSET);
 
 		List<Document> data = Generation.GenerateDatabase(termDist, NB_DOCS, AVG_NWDOC, STD_NWDOC);
 
@@ -65,7 +65,7 @@ public class Launcher {
 
 		Infrastructure infrastructure = Generation.GenerateInfrastructure("General Infrastructure");
 
-		List<Shard> shardBase = Generation.GenerateShardBase(infrastructure, NB_TOTALSHARDS, NB_REPLICAS);
+		List<Shard> shardBase = Generation.GenerateShardBase(infrastructure, NB_PRIMARYSHARDS, NB_REPLICAS);
 
 		/*
 		 * Routing documents to shards
@@ -91,8 +91,7 @@ public class Launcher {
 		///////////////////////////////////////////////////////////////////////////////////////////////
 
 		Workload workload = Generation.GenerateYCSBWorkload(NB_PRIMARYSHARDS, appLandscape);
-		// Workload workload = Generation.GenerateSyntheticWorkload(termDist,
-		// NB_TERMSET, NB_REQUEST, appLandscape, shardBase);
+		//Workload workload = Generation.GenerateSyntheticWorkload(termDist,NB_TERMSET, NB_REQUEST, appLandscape, shardBase);
 
 		///////////////////////////////////////////////////////////////////////////////////////////////
 		/////////////////// EXPERIMENT CONFIGURATION
@@ -179,8 +178,8 @@ public class Launcher {
 			requestSequence.add(requestDist.sample());
 		}
 
-		// return requestSet;
-		return requestSequence;
+		return requestSet;
+		//return requestSequence;
 
 	}
 

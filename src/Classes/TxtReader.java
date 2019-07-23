@@ -6,14 +6,15 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
 public class TxtReader {
 	
-	public static void calculateMips() {
-		
+	public static void main(String[] args) {
+		System.out.println(Arrays.toString(calculateRepart(9, typeData.MemoryUsage)));
 	}
 
 	@SuppressWarnings({ "deprecation", "unchecked" })
@@ -68,7 +69,7 @@ public class TxtReader {
 	 * nodes, based on CpuLoad
 	 */
 	@SuppressWarnings("unchecked")
-	public static Double[] calculateRepart(int nbNodes) {
+	public static Double[] calculateRepart(int nbNodes, typeData type) {
 
 		int[] vms = {};
 		switch (nbNodes) {
@@ -85,7 +86,7 @@ public class TxtReader {
 		// getting cpuLoads
 		List<List<Double>> cpuLoads = new ArrayList<List<Double>>();
 		for (int vm : vms) {
-			List<Double> add = (List<Double>) (List<?>) readMonitoring(nbNodes, typeData.CpuLoad, vm).get(2);
+			List<Double> add = (List<Double>) (List<?>) readMonitoring(nbNodes, type, vm).get(2);
 			if (vm == 111)
 				add = add.subList(10, add.size()); // removing the 10 first values of VM111 to align timestamps
 			cpuLoads.add(add);
@@ -94,16 +95,16 @@ public class TxtReader {
 		// calculating normalized cpu load
 		List<List<Double>> normCpuLoads = new ArrayList<List<Double>>();
 
-		for (int field = 0; field < cpuLoads.size(); field++) {
+		for (int vm = 0; vm < cpuLoads.size(); vm++) {
 
 			List<Double> add = new ArrayList<Double>();
 
-			for (int time = 0; time < cpuLoads.get(field).size(); time++) {
+			for (int time = 0; time < cpuLoads.get(vm).size(); time++) {
 				double sum = 0;
-				for (int field2 = 0; field2 < cpuLoads.size(); field2++) {
-					sum += cpuLoads.get(field2).get(time);
+				for (int vm_bis = 0; vm_bis < cpuLoads.size(); vm_bis++) {
+					sum += cpuLoads.get(vm_bis).get(time);
 				}
-				add.add(cpuLoads.get(field).get(time) / sum);
+				add.add(cpuLoads.get(vm).get(time) / sum);
 			}
 			normCpuLoads.add(add);
 		}

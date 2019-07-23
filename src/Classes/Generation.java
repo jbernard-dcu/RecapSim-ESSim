@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeMap;
 
+import Classes.TxtReader.typeData;
 import Distribution.FreqD;
 import Distribution.ExpD;
 import Main.Launcher;
@@ -102,7 +103,7 @@ public final class Generation {
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	public static List<Shard> GenerateShardBase(Infrastructure infrastructure, int NB_TOTALSHARDS, int NB_REPLICAS) {
+	public static List<Shard> GenerateShardBase(Infrastructure infrastructure, int NB_PRIMARYSHARDS, int NB_REPLICAS) {
 		long startTime = System.currentTimeMillis();
 
 		// Fetching list of nodes
@@ -110,15 +111,15 @@ public final class Generation {
 		for (ResourceSite site : infrastructure.getSitesList()) {
 			nodes.addAll(site.getNodesList());
 		}
-
+		
 		// Creating shards
 		List<Shard> shardBase = new ArrayList<Shard>();
 		int nodeId;
-		for (int shardId = 0; shardId < NB_TOTALSHARDS; shardId++) {
+		for (int shardId = 0; shardId < NB_PRIMARYSHARDS * (1 + NB_REPLICAS); shardId++) {
 			nodeId = shardAllocation(shardId, nodes.size());
 			shardBase.add(new Shard(nodes.get(nodeId), nodeId));
 		}
-		for (int indexShard = 0; indexShard < NB_TOTALSHARDS; indexShard++) {
+		for (int indexShard = 0; indexShard < NB_PRIMARYSHARDS * (1 + NB_REPLICAS); indexShard++) {
 			int previousPrimaryShard = (NB_REPLICAS + 1) * (int) (indexShard / (NB_REPLICAS + 1));
 			shardBase.get(indexShard).setReplicationGroup(
 					shardBase.subList(previousPrimaryShard, previousPrimaryShard + NB_REPLICAS + 1));
@@ -319,7 +320,7 @@ public final class Generation {
 		// Reading input file
 		List<List<Object>> validRequest = TxtReader.mergeWorkloads();
 
-		// For quicker testing
+		/*// For quicker testing, max 83 requests
 		List<List<Object>> test = new ArrayList<List<Object>>();
 		for (int field = 0; field < validRequest.size(); field++) {
 			test.add(new ArrayList<Object>());
@@ -329,14 +330,14 @@ public final class Generation {
 				test.get(field).add(validRequest.get(field).get(time));
 			}
 		}
-		validRequest = test;
+		validRequest = test;*/
 
 		// Calculating frequency distribution
 		List<Integer> nodeIds = new ArrayList<Integer>();
 		for (int nodeId = 1; nodeId <= numberNodes; nodeId++) {
 			nodeIds.add(nodeId);
 		}
-		FreqD<Integer> nodeDist = new FreqD<Integer>(nodeIds, TxtReader.calculateRepart(numberNodes));
+		FreqD<Integer> nodeDist = new FreqD<Integer>(nodeIds, TxtReader.calculateRepart(numberNodes, typeData.CpuLoad));
 
 		// Getting starting time of the requests
 		long dateInitialRequest = ((Date) validRequest.get(0).get(0)).getTime();
@@ -418,8 +419,7 @@ public final class Generation {
 		int indexNmberOfNodes = nodeIds.size() - 1;
 
 		int nodesCounter = 0;
-		int appCounter = 1;
-		while (appCounter - 1 != appQty) {
+		for (int appCounter = 0; appCounter < appQty; appCounter++) {
 			/*
 			 * New application builder
 			 */
@@ -556,8 +556,6 @@ public final class Generation {
 			}
 
 			applicationLandscapeBuilder.addApplications(appBuilder.build());
-
-			appCounter++;
 
 		}
 
