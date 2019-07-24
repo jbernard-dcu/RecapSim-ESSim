@@ -7,61 +7,17 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
 public class TxtReader {
-	
+
 	public static void main(String[] args) {
-		System.out.println(Arrays.toString(calculateRepart(9, typeData.MemoryUsage)));
-	}
-
-	@SuppressWarnings({ "deprecation", "unchecked" })
-	public static List<List<Object>> mergeWorkloads() {
-		/*
-		 * Sorting requests from both workloads
-		 */
-		List<List<Object>> vRW = getRequests(9, writeOrRead.W);
-		List<List<Object>> vRR = getRequests(9, writeOrRead.R);
-
-		List<Date> vRWdates = (List<Date>) (List<?>) vRW.get(0);
-		List<Date> vRRdates = (List<Date>) (List<?>) vRR.get(0);
-
-		List<List<Object>> vR = new ArrayList<List<Object>>();
-		for (int field = 0; field < 6; field++) {
-			vR.add(new ArrayList<Object>());
-		}
-
-		int indexWmin;
-		int indexRmin;
-		int indexMin;
-		List<List<Object>> vRmin;
-		for (int index = 0; index < vRWdates.size() + vRRdates.size(); index++) {
-			indexWmin = vRWdates.indexOf(Collections.min(vRWdates));
-			indexRmin = vRRdates.indexOf(Collections.min(vRRdates));
-
-			if (vRWdates.get(indexWmin).getTime() >= vRRdates.get(indexRmin).getTime()) {
-				indexMin = indexRmin;
-				vRmin = vRR;
-			} else {
-				indexMin = indexWmin;
-				vRmin = vRW;
-			}
-
-			for (int field = 0; field < 6; field++) {
-				vR.get(field).add(vRmin.get(field).get(indexMin));
-			}
-
-			if (vRmin.equals(vRW)) {
-				vRWdates.set(indexWmin, new Date(2020, 1, 1));
-			} else {
-				vRRdates.set(indexRmin, new Date(2020, 1, 1));
-			}
-
-		}
-
-		return vR;
+		
+		System.out.println(mergeWorkloads().toString());
+		
 	}
 
 	/**
@@ -71,7 +27,7 @@ public class TxtReader {
 	@SuppressWarnings("unchecked")
 	public static Double[] calculateRepart(int nbNodes, typeData type) {
 
-		int[] vms = {};
+		int[] vms;
 		switch (nbNodes) {
 		case 3:
 			vms = new int[] { 111, 144, 164 };
@@ -87,6 +43,7 @@ public class TxtReader {
 		List<List<Double>> cpuLoads = new ArrayList<List<Double>>();
 		for (int vm : vms) {
 			List<Double> add = (List<Double>) (List<?>) readMonitoring(nbNodes, type, vm).get(2);
+
 			if (vm == 111)
 				add = add.subList(10, add.size()); // removing the 10 first values of VM111 to align timestamps
 			cpuLoads.add(add);
@@ -104,7 +61,8 @@ public class TxtReader {
 				for (int vm_bis = 0; vm_bis < cpuLoads.size(); vm_bis++) {
 					sum += cpuLoads.get(vm_bis).get(time);
 				}
-				add.add(cpuLoads.get(vm).get(time) / sum);
+
+				add.add(cpuLoads.get(vm).get(time) * ((sum != 0) ? 1 / sum : 1));
 			}
 			normCpuLoads.add(add);
 		}
@@ -112,13 +70,13 @@ public class TxtReader {
 		// average for each VM of the normalized cpu load
 		Double[] distribution = new Double[vms.length];
 
-		for (int field = 0; field < normCpuLoads.size(); field++) {
+		for (int vm = 0; vm < normCpuLoads.size(); vm++) {
 			double sum = 0;
-			for (int time = 0; time < normCpuLoads.get(field).size(); time++) {
-				sum += normCpuLoads.get(field).get(time);
+			for (int time = 0; time < normCpuLoads.get(vm).size(); time++) {
+				sum += normCpuLoads.get(vm).get(time);
 			}
 
-			distribution[field] = sum / normCpuLoads.get(field).size();
+			distribution[vm] = sum / normCpuLoads.get(vm).size();
 		}
 
 		return distribution;
@@ -234,8 +192,7 @@ public class TxtReader {
 
 			String line = bufferedReader.readLine();
 
-			final int NB_FIELDS = 3;
-			for (int field = 0; field < NB_FIELDS; field++) {
+			for (int field = 0; field < 3; field++) {
 				columns.add(new ArrayList<Object>());
 			}
 
@@ -256,6 +213,54 @@ public class TxtReader {
 
 	}
 
+	@SuppressWarnings({ "unchecked" })
+	public static List<List<Object>> mergeWorkloads() {
+		/*
+		 * Sorting requests from both workloads
+		 */
+		List<List<Object>> validRequestsW = getRequests(9, writeOrRead.W);
+		List<List<Object>> validRequestsR = getRequests(9, writeOrRead.R);
+
+		List<Long> vRWdates = (List<Long>) (List<?>) validRequestsW.get(0);
+		List<Long> vRRdates = (List<Long>) (List<?>) validRequestsR.get(0);
+
+		List<List<Object>> validRequests = new ArrayList<List<Object>>();
+		for (int field = 0; field < 6; field++) {
+			validRequests.add(new ArrayList<Object>());
+		}
+
+		int indexWmin;
+		int indexRmin;
+		int indexMin;
+		List<List<Object>> vRmin;
+		for (int index = 0; index < vRWdates.size() + vRRdates.size(); index++) {
+			indexWmin = vRWdates.indexOf(Collections.min(vRWdates));
+			indexRmin = vRRdates.indexOf(Collections.min(vRRdates));
+
+			if (vRWdates.get(indexWmin) >= vRRdates.get(indexRmin)) {
+				indexMin = indexRmin;
+				vRmin = validRequestsR;
+			} else {
+				indexMin = indexWmin;
+				vRmin = validRequestsW;
+			}
+
+			for (int field = 0; field < 6; field++) {
+				validRequests.get(field).add(vRmin.get(field).get(indexMin));
+			}
+
+			if (vRmin.equals(validRequestsW)) {
+				vRWdates.set(indexWmin, Long.MAX_VALUE);
+			} else {
+				vRRdates.set(indexRmin, Long.MAX_VALUE);
+			}
+
+		}
+
+		return validRequests;
+	}
+
+	@SuppressWarnings("deprecation")
 	public static List<List<Object>> getRequests(int numberNodes, writeOrRead pick) {
 		String path = "/elasticsearch_nodes-" + numberNodes + "_replication-3/nodes-" + numberNodes
 				+ "_replication-3/evaluation_run_2018_11_25-";
@@ -298,9 +303,8 @@ public class TxtReader {
 					int minutes = Integer.parseInt(getWord(line, start + 3, ":"));
 					int seconds = Integer.parseInt(getWord(line, start + 6, ":"));
 					int milliseconds = Integer.parseInt(getWord(line, start + 9, " "));
-					@SuppressWarnings("deprecation")
-					Date addDate = new Date(milliseconds + 1000 * seconds + 1000 * 60 * minutes + 1000 * 60 * 60 * hours
-							+ new Date(2018, 11, 25).getTime());
+					long addDate = milliseconds + 1000 * seconds + 1000 * 60 * minutes + 1000 * 60 * 60 * hours
+							+ new Date(2018, 11, 25).getTime();
 
 					// Timestamp
 					start = 24;
@@ -324,7 +328,10 @@ public class TxtReader {
 						addEstTime = readTimeWorkload(getWord(line, start, "["));
 					}
 
-					// Request type and add all
+					// Building the list of wanted request types
+					List<String> requestTypes = Arrays.asList("READ", "INSERT", "UPDATE");
+
+					// Request specs and add all
 					if (!line.contains("[")) {
 						validRequest.get(0).add(addDate);
 						validRequest.get(1).add(addTime);
@@ -335,14 +342,18 @@ public class TxtReader {
 					} else {
 						start = line.indexOf("[", start) + 1;
 						while (start > 0) {
-							validRequest.get(0).add(addDate);
-							validRequest.get(1).add(addTime);
-							validRequest.get(2).add(addNOp);
-							validRequest.get(3).add(addThroughput);
-							validRequest.get(4).add(addEstTime);
-							validRequest.get(5).add(new SpecRequest(getWord(line, start, "]")));
-							start = line.indexOf("[", start) + 1;
+							// checking the type of request before adding
+							SpecRequest addSpecs = new SpecRequest(getWord(line, start, "]"));
 
+							if (requestTypes.contains(addSpecs.getType())) {
+								validRequest.get(0).add(addDate);
+								validRequest.get(1).add(addTime);
+								validRequest.get(2).add(addNOp);
+								validRequest.get(3).add(addThroughput);
+								validRequest.get(4).add(addEstTime);
+								validRequest.get(5).add(addSpecs);
+							}
+							start = line.indexOf("[", start) + 1;
 						}
 					}
 
@@ -429,7 +440,7 @@ public class TxtReader {
  */
 class SpecRequest {
 	private String type;
-	private int count;
+	private int countOp;
 	private int max;
 	private int min;
 	private double avg;
@@ -440,7 +451,7 @@ class SpecRequest {
 
 	public SpecRequest() {
 		this.type = "NONE";
-		this.count = 0;
+		this.countOp = 0;
 		this.max = 0;
 		this.min = 0;
 		this.avg = 0;
@@ -452,7 +463,7 @@ class SpecRequest {
 
 	public SpecRequest(String init) {
 		this.type = TxtReader.getWord(init, 0, ": ");
-		this.count = Integer.parseInt(TxtReader.getWord(init, init.indexOf("Count=") + 6, ", "));
+		this.countOp = Integer.parseInt(TxtReader.getWord(init, init.indexOf("Count=") + 6, ", "));
 		this.max = Integer.parseInt(TxtReader.getWord(init, init.indexOf("Max=") + 4, ", "));
 		this.min = Integer.parseInt(TxtReader.getWord(init, init.indexOf("Min=") + 4, ", "));
 		this.avg = Double.parseDouble(TxtReader.getWord(init, init.indexOf("Avg=") + 4, ", "));
@@ -469,7 +480,7 @@ class SpecRequest {
 	public String toString() {
 		List<Object> list = new ArrayList<Object>();
 		list.add(type);
-		list.add(count);
+		list.add(countOp);
 		list.add(max);
 		list.add(min);
 		list.add(avg);
@@ -481,17 +492,16 @@ class SpecRequest {
 	}
 
 	/**
-	 * Returns the average expected time in milliseconds to complete the request,
-	 * based on nb_operations and throughput
+	 * Return the average latency per operation for this request in µs
 	 */
-	public double getAvgTime() {
+	public double getAvgLatency() {
 		return this.avg;
 	}
-	
+
 	/**
 	 * Return the number of operations performed for this request
 	 */
 	public int getnbOpCount() {
-		return this.count;
+		return this.countOp;
 	}
 }

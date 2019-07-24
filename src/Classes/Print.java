@@ -9,6 +9,13 @@ import eu.recap.sim.models.WorkloadModel.Request;
 import eu.recap.sim.models.WorkloadModel.Workload;
 
 public class Print {
+	
+	public static void printMapMonitoring(TreeMap<Double,List<Double>> map) {
+		for(double key:map.keySet()) {
+			System.out.println(key+", "+map.get(key).toString());
+		}
+	}
+	
 	/**
 	 * Prints the score of each document to the request q, using
 	 * <code>getScoreRequest()</code> function

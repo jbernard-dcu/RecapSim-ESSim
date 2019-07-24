@@ -52,25 +52,26 @@ public final class Generation {
 	static final int numberSites = 1;
 	static int[] numberNodesPerSite = { 2 + Launcher.NB_PRIMARYSHARDS };// WS + ES + Data nodes
 
+	// Application landscape
+	// VM memory and storage expressed in Mo
+	// all VMs are the same, TODO allow different configurations
+
+	// Values changed for the german workload
+	static final int vmCores = 2;
+	static final int vmMemory = 4_000; // 5,000 in output
+	static final int vmStorage = 70_000;
+	
+	//ES client
+	static int esClient_cores = 16;
+	static int esClient_memory = 112_000;
+	static int esClient_storage = 181_000;
+	
 	// Hosts
 	static final int[][] cpuFrequency = initSameValue(numberSites, numberNodesPerSite, 3000); // MIPS or 2.6 GHz
 	static final int[][] cpuCores = initSameValue(numberSites, numberNodesPerSite, 80);
 	static final int[][] ram = initSameValue(numberSites, numberNodesPerSite, 2048_000); // host memory (MEGABYTE)
 	static final int[][] hdd = initSameValue(numberSites, numberNodesPerSite, 1_000_000_000); // host storage (MEGABYTE)
 	static final int bw = 10_000; // 10Gbit/s
-
-	// Application landscape
-	// VM memory and storage expressed in Mo
-	// all VMs are the same, TODO allow different configurations
-
-	// Values changed for the german workload
-	final static int vmCores = 2;
-	final static int vmMemory = 4_000; // 5,000 in output
-	final static int vmStorage = 70_000;
-
-	static int esClient_cores = 16;
-	static int esClient_memory = 112_000;
-	static int esClient_storage = 181_000;
 
 	// resource consumption going from client to web server
 	static int clientToWebServer_mips = 300 * timeUnits / 10;
@@ -97,13 +98,16 @@ public final class Generation {
 	static int ESToWebServer_iops = 1;
 	static int ESToWebServer_ram = 200;// 500
 	static int ESToWebServer_transferData = 1 * timeUnits;
+	
+	//repartition between data nodes
+	static typeData type = typeData.NetworkReceived;
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////// GENERATORS
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	public static List<Shard> GenerateShardBase(Infrastructure infrastructure, int NB_PRIMARYSHARDS, int NB_REPLICAS) {
+	public static List<Shard> GenerateShardBase(Infrastructure infrastructure, int NB_PRIMARYSHARDS, int NB_REPLICAS, List<Document> data) {
 		long startTime = System.currentTimeMillis();
 
 		// Fetching list of nodes
@@ -111,7 +115,7 @@ public final class Generation {
 		for (ResourceSite site : infrastructure.getSitesList()) {
 			nodes.addAll(site.getNodesList());
 		}
-		
+
 		// Creating shards
 		List<Shard> shardBase = new ArrayList<Shard>();
 		int nodeId;
@@ -124,6 +128,12 @@ public final class Generation {
 			shardBase.get(indexShard).setReplicationGroup(
 					shardBase.subList(previousPrimaryShard, previousPrimaryShard + NB_REPLICAS + 1));
 			shardBase.get(indexShard).setPrimaryShard(indexShard % (NB_REPLICAS + 1) == 0);
+		}
+		
+		//Routing documents to shards
+		for (Document doc : data) {
+			int index = (doc.getID() % NB_PRIMARYSHARDS) * (NB_REPLICAS + 1);
+			shardBase.get(index).addDocument(doc);
 		}
 
 		System.out.println("Shardbase generated:" + (System.currentTimeMillis() - startTime) + "ms");
@@ -311,42 +321,43 @@ public final class Generation {
 	 * Method to generate a workload from the input data (3/9 nodes).
 	 * 
 	 * @param numberNodes : choose 3 or 9 to choose the workload
+	 * @param nbRequest : set to 0 to use full workload, else the workload is reduced to <code>nbRequest</code> requests
 	 */
-	public static Workload GenerateYCSBWorkload(int numberNodes, ApplicationLandscape appLandscape)
+	public static Workload GenerateYCSBWorkload(int numberNodes, ApplicationLandscape appLandscape, int nbRequest)
 			throws FileNotFoundException {
 
 		long startTime = System.currentTimeMillis();
-
+		
 		// Reading input file
 		List<List<Object>> validRequest = TxtReader.mergeWorkloads();
-
-		/*// For quicker testing, max 83 requests
-		List<List<Object>> test = new ArrayList<List<Object>>();
-		for (int field = 0; field < validRequest.size(); field++) {
-			test.add(new ArrayList<Object>());
-		}
-		for (int time = 0; time < Launcher.NB_REQUEST; time++) {
+		
+		if (nbRequest!=0) {
+			// For quicker testing, max 83 requests
+			List<List<Object>> test = new ArrayList<List<Object>>();
 			for (int field = 0; field < validRequest.size(); field++) {
-				test.get(field).add(validRequest.get(field).get(time));
+				test.add(new ArrayList<Object>());
 			}
+			for (int time = 0; time < nbRequest; time++) {
+				for (int field = 0; field < validRequest.size(); field++) {
+					test.get(field).add(validRequest.get(field).get(time));
+				}
+			}
+			validRequest = test;
 		}
-		validRequest = test;*/
-
+		
 		// Calculating frequency distribution
 		List<Integer> nodeIds = new ArrayList<Integer>();
 		for (int nodeId = 1; nodeId <= numberNodes; nodeId++) {
 			nodeIds.add(nodeId);
 		}
-		FreqD<Integer> nodeDist = new FreqD<Integer>(nodeIds, TxtReader.calculateRepart(numberNodes, typeData.CpuLoad));
+		FreqD<Integer> nodeDist = new FreqD<Integer>(nodeIds, TxtReader.calculateRepart(numberNodes, type));
 
 		// Getting starting time of the requests
-		long dateInitialRequest = ((Date) validRequest.get(0).get(0)).getTime();
+		long dateInitialRequest = (Long) validRequest.get(0).get(0);
 
 		// Adding requests to device
 		Device.Builder device = Device.newBuilder();
 		for (int request = 0; request < validRequest.get(0).size(); request++) {
-
-			SpecRequest spec = (SpecRequest) (validRequest.get(5).get(request));
 
 			// Number of data nodes serving the request
 			int nNodesServingRequest = Launcher.randGint(numberNodes / 2., numberNodes / 6., 0, numberNodes);
@@ -359,17 +370,16 @@ public final class Generation {
 					dataNodeDestination.add(destinationNode);
 			}
 
-			long dateRequest = ((Date) validRequest.get(0).get(request)).getTime();
+			long dateRequest = (Long) validRequest.get(0).get(request);
 
 			Request.Builder requestBuilder = Request.newBuilder();
 			requestBuilder.setTime(dateRequest - dateInitialRequest);
 			requestBuilder.setRequestId(request + 1);
+			requestBuilder.setComponentId("1");
+			requestBuilder.setApiId("1_1");
 
 			// TODO multiple applications
 			requestBuilder.setApplicationId(appLandscape.getApplications(0).getApplicationId());
-
-			requestBuilder.setComponentId("1");
-			requestBuilder.setApiId("1_1");
 
 			// TODO calculate data to transfer
 			requestBuilder.setDataToTransfer(1);
