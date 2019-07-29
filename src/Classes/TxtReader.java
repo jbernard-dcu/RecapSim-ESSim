@@ -15,9 +15,9 @@ import java.util.List;
 public class TxtReader {
 
 	public static void main(String[] args) {
-		
+
 		System.out.println(mergeWorkloads().toString());
-		
+
 	}
 
 	/**
@@ -213,6 +213,9 @@ public class TxtReader {
 
 	}
 
+	/**
+	 * 0=Date, 1=time, 2=nOp, 3=throughput, 4=estTime, 5=Spec
+	 */
 	@SuppressWarnings({ "unchecked" })
 	public static List<List<Object>> mergeWorkloads() {
 		/*
@@ -332,14 +335,7 @@ public class TxtReader {
 					List<String> requestTypes = Arrays.asList("READ", "INSERT", "UPDATE");
 
 					// Request specs and add all
-					if (!line.contains("[")) {
-						validRequest.get(0).add(addDate);
-						validRequest.get(1).add(addTime);
-						validRequest.get(2).add(addNOp);
-						validRequest.get(3).add(addThroughput);
-						validRequest.get(4).add(addEstTime);
-						validRequest.get(5).add(new SpecRequest());
-					} else {
+					if (line.contains("[")) {
 						start = line.indexOf("[", start) + 1;
 						while (start > 0) {
 							// checking the type of request before adding

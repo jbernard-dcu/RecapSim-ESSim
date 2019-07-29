@@ -16,13 +16,13 @@ import eu.recap.sim.models.InfrastructureModel.Infrastructure;
 import eu.recap.sim.models.WorkloadModel.*;
 
 public class Launcher {
-	
+
 	/*
 	 * Instance variables
 	 */
-	//synthetic workload
-	
-	//common
+	// synthetic workload
+
+	// common
 	private Infrastructure infrastructure;
 	private ApplicationLandscape appLandscape;
 	private Workload workload;
@@ -48,13 +48,12 @@ public class Launcher {
 	 * Common parameters
 	 */
 	// Parameters database
-	public final static int NB_INDEX = 1;
+	// public final static int NB_INDEX = 1;
 	public final static int NB_PRIMARYSHARDS = 9;
 	public final static int NB_REPLICAS = 3; // per primary shard
 	public final static int NB_TOTALSHARDS = NB_PRIMARYSHARDS * (1 + NB_REPLICAS);
 	// Parameters ApplicationModel
 	final static int NB_APPS = 1;
-	
 
 	public static void main(String[] args) throws Exception {
 
@@ -62,8 +61,8 @@ public class Launcher {
 		/////////////////// DATABASE GENERATION
 		///////////////////////////////////////////////////////////////////////////////////////////////
 
-		TreeMap<Long, Double> termDist = BasicZipfDist(NB_TERMSET);
-		//TreeMap<Long, Double> termDist = UnifDist(NB_TERMSET);
+		TreeMap<Long, Double> termDist = ZipfDist(NB_TERMSET,1.);
+		// TreeMap<Long, Double> termDist = UnifDist(NB_TERMSET);
 
 		List<Document> data = Generation.GenerateDatabase(termDist, NB_DOCS, AVG_NWDOC, STD_NWDOC);
 
@@ -79,21 +78,22 @@ public class Launcher {
 		/////////////////// APPLICATION LANDSCAPE
 		///////////////////////////////////////////////////////////////////////////////////////////////
 
-		ApplicationLandscape appLandscape = Generation.GenerateApplicationLandscape(NB_APPS, NB_PRIMARYSHARDS,infrastructure);
+		ApplicationLandscape appLandscape = Generation.GenerateAppLandscape(NB_APPS, NB_PRIMARYSHARDS,
+				infrastructure);
 
 		///////////////////////////////////////////////////////////////////////////////////////////////
 		/////////////////// WORKLOAD GENERATION
 		///////////////////////////////////////////////////////////////////////////////////////////////
 
-		Workload workload = Generation.GenerateYCSBWorkload(NB_PRIMARYSHARDS, appLandscape, 10);
-		//Workload workload = Generation.GenerateSyntheticWorkload(termDist,NB_TERMSET, NB_REQUEST, appLandscape, shardBase);
+		Workload workload = Generation.GenerateYCSBWorkload(NB_PRIMARYSHARDS, appLandscape, 0);
+		// Workload workload = Generation.GenerateSyntheticWorkload(termDist,NB_TERMSET,
+		// NB_REQUEST, appLandscape, shardBase);
 
 		///////////////////////////////////////////////////////////////////////////////////////////////
 		/////////////////// RESULTS
 		///////////////////////////////////////////////////////////////////////////////////////////////
-		
+
 		new Launcher(infrastructure, appLandscape, workload);
-		
 
 	}
 
@@ -101,26 +101,26 @@ public class Launcher {
 	////////////////////////////// CONSTRUCTOR
 	/////////////////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////////////////
-	
+
 	public Launcher(Infrastructure infrastructure, ApplicationLandscape appLandscape, Workload workload) {
 		this.infrastructure = infrastructure;
-		
+
 		this.appLandscape = appLandscape;
-		
+
 		this.workload = workload;
-		
+
 		Experiment.Builder configBuilder = Experiment.newBuilder();
 		configBuilder.setName("General config");
 		configBuilder.setDuration(200);
 		configBuilder.setApplicationLandscape(appLandscape).setInfrastructure(infrastructure).setWorkload(workload);
 		this.config = configBuilder.build();
-		
+
 		this.recapExperiment = new RecapSim();
-		
+
 		String simulationId = recapExperiment.StartSimulation(config);
 		System.out.println("Simulation is:" + recapExperiment.SimulationStatus(simulationId));
 	}
-	
+
 	/////////////////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////// METHODS
 	/////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -165,15 +165,15 @@ public class Launcher {
 	public void setRecapExperiment(RecapSim recapExperiment) {
 		this.recapExperiment = recapExperiment;
 	}
-	
+
 	/**
 	 * Creates a basic Zipfian distribution, useful to create the parameter of FreqD
 	 * constructor
 	 */
-	public static TreeMap<Long, Double> BasicZipfDist(int nbTermSet) {
+	public static TreeMap<Long, Double> ZipfDist(int nbTermSet, double param){
 		TreeMap<Long, Double> res = new TreeMap<Long, Double>();
 		for (long i = 1; i <= nbTermSet; i++) {
-			res.put(i, 1. / i);
+			res.put(i, 1. / Math.pow(i, param));
 		}
 		return res;
 	}
@@ -223,7 +223,7 @@ public class Launcher {
 		}
 
 		return requestSet;
-		//return requestSequence;
+		// return requestSequence;
 
 	}
 
@@ -300,5 +300,5 @@ public class Launcher {
 		}
 		return res;
 	}
-	
+
 }

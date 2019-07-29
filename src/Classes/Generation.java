@@ -36,8 +36,6 @@ import eu.recap.sim.models.WorkloadModel.Workload;
 /**
  * This class holds useful methods to generate the objects necessary for the
  * modelisation</br>
- * TODO take files as parameters to set the constants, especially the hosts
- * parameters
  */
 public final class Generation {
 
@@ -48,66 +46,74 @@ public final class Generation {
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	// Sites
+	/* Sites */
 	static final int numberSites = 1;
-	static int[] numberNodesPerSite = { 2 + Launcher.NB_PRIMARYSHARDS };// WS + ES + Data nodes
+	static int[] numberNodesPerSite = { /* 2 + */Launcher.NB_PRIMARYSHARDS };// WS + ES + Data nodes
 
 	// Application landscape
 	// VM memory and storage expressed in Mo
-	// all VMs are the same, TODO allow different configurations
+	// all VMs are the same
 
 	// Values changed for the german workload
 	static final int vmCores = 2;
 	static final int vmMemory = 4_000; // 5,000 in output
 	static final int vmStorage = 70_000;
-	
-	//ES client
+
+	/* ES client */
 	static int esClient_cores = 16;
 	static int esClient_memory = 112_000;
 	static int esClient_storage = 181_000;
-	
-	// Hosts
+
+	/* Hosts */
 	static final int[][] cpuFrequency = initSameValue(numberSites, numberNodesPerSite, 3000); // MIPS or 2.6 GHz
 	static final int[][] cpuCores = initSameValue(numberSites, numberNodesPerSite, 80);
 	static final int[][] ram = initSameValue(numberSites, numberNodesPerSite, 2048_000); // host memory (MEGABYTE)
 	static final int[][] hdd = initSameValue(numberSites, numberNodesPerSite, 1_000_000_000); // host storage (MEGABYTE)
 	static final int bw = 10_000; // 10Gbit/s
 
+	/* Apis */
 	// resource consumption going from client to web server
 	static int clientToWebServer_mips = 300 * timeUnits / 10;
 	static int clientToWebServer_iops = 1;
 	static int clientToWebServer_ram = 200;// 500
 	static int clientToWebServer_transferData = 1 * timeUnits;
+
 	// resource consumption going from web server to ES
 	static int webServerToES_mips = 300 * timeUnits / 10;
 	static int webServerToES_iops = 1;
 	static int webServerToES_ram = 200;// 500
 	static int webServerToES_transferData = 1 * timeUnits;
+
 	// resource consumption going from ES to DataNode
 	static int ESToDataNode_mips = 1 * timeUnits / 10;
 	static int ESToDataNode_iops = 1;
-	static int ESToDataNode_ram = 200; // 2000
+	static int ESToDataNode_ram = 111; // 2000
 	static int ESToDataNode_transferData = 1 * timeUnits;
+
 	// resource consumption going from DataNode to ES
 	static int DataNodeToES_mips = 300 * timeUnits / 10;
 	static int DataNodeToES_iops = 1;
 	static int DataNodeToES_ram = 200;// 1000
 	static int DataNodeToES_transferData = 1 * timeUnits;
+
 	// resource consumption going from ES to Web Server
 	static int ESToWebServer_mips = 300 * timeUnits / 10;
 	static int ESToWebServer_iops = 1;
 	static int ESToWebServer_ram = 200;// 500
 	static int ESToWebServer_transferData = 1 * timeUnits;
-	
-	//repartition between data nodes
-	static typeData type = typeData.NetworkReceived;
+
+	// repartition between data nodes
+	static typeData typeRepart = typeData.NetworkReceived;
+	static int numberNodes = Launcher.NB_PRIMARYSHARDS;
+	static int nNodesServingRequest = 6 /* Launcher.randGint(numberNodes / 2., numberNodes / 6., 0, numberNodes) */;
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////// GENERATORS
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	public static List<Shard> GenerateShardBase(Infrastructure infrastructure, int NB_PRIMARYSHARDS, int NB_REPLICAS, List<Document> data) {
+	public static List<Shard> GenerateShardBase(Infrastructure infrastructure, int NB_PRIMARYSHARDS, int NB_REPLICAS,
+			List<Document> data) {
 		long startTime = System.currentTimeMillis();
 
 		// Fetching list of nodes
@@ -129,8 +135,8 @@ public final class Generation {
 					shardBase.subList(previousPrimaryShard, previousPrimaryShard + NB_REPLICAS + 1));
 			shardBase.get(indexShard).setPrimaryShard(indexShard % (NB_REPLICAS + 1) == 0);
 		}
-		
-		//Routing documents to shards
+
+		// Routing documents to shards
 		for (Document doc : data) {
 			int index = (doc.getID() % NB_PRIMARYSHARDS) * (NB_REPLICAS + 1);
 			shardBase.get(index).addDocument(doc);
@@ -142,7 +148,8 @@ public final class Generation {
 	}
 
 	/**
-	 * Returns a list of Documents with the specified termDist
+	 * Returns a list of Documents with the specified termDist TODO optimize and
+	 * more realistic model for file characteristics
 	 */
 	public static List<Document> GenerateDatabase(TreeMap<Long, Double> termDist, int NB_DOCS, double AVG_NWDOC,
 			double STD_NWDOC) {
@@ -152,12 +159,9 @@ public final class Generation {
 		 * Generate list of documents stored on the database
 		 */
 		// Generating random length and size
-		// TODO more realistic model for file sizes and link with number of words
 		long maxSize = 1_000_000_000; // bytes
 
 		// Generating distribution of words
-		// TODO optimize, the doc database creation takes too long, complexity
-		// NB_DOCS*AVG_NWDOC
 		FreqD<Long> wordDist = new FreqD<Long>(termDist);
 
 		List<Document> database = new ArrayList<Document>();
@@ -202,8 +206,7 @@ public final class Generation {
 		}
 
 		/*
-		 * Generating client IDs list and repart of requests between clients TODO :
-		 * allow any distribution
+		 * Generating client IDs list and repart of requests between clients
 		 */
 
 		// Creating lists
@@ -321,17 +324,18 @@ public final class Generation {
 	 * Method to generate a workload from the input data (3/9 nodes).
 	 * 
 	 * @param numberNodes : choose 3 or 9 to choose the workload
-	 * @param nbRequest : set to 0 to use full workload, else the workload is reduced to <code>nbRequest</code> requests
+	 * @param nbRequest   : set to 0 to use full workload, else the workload is
+	 *                    reduced to <code>nbRequest</code> requests
 	 */
 	public static Workload GenerateYCSBWorkload(int numberNodes, ApplicationLandscape appLandscape, int nbRequest)
 			throws FileNotFoundException {
 
 		long startTime = System.currentTimeMillis();
-		
+
 		// Reading input file
 		List<List<Object>> validRequest = TxtReader.mergeWorkloads();
-		
-		if (nbRequest!=0) {
+
+		if (nbRequest != 0) {
 			// For quicker testing, max 83 requests
 			List<List<Object>> test = new ArrayList<List<Object>>();
 			for (int field = 0; field < validRequest.size(); field++) {
@@ -344,13 +348,13 @@ public final class Generation {
 			}
 			validRequest = test;
 		}
-		
+
 		// Calculating frequency distribution
 		List<Integer> nodeIds = new ArrayList<Integer>();
 		for (int nodeId = 1; nodeId <= numberNodes; nodeId++) {
 			nodeIds.add(nodeId);
 		}
-		FreqD<Integer> nodeDist = new FreqD<Integer>(nodeIds, TxtReader.calculateRepart(numberNodes, type));
+		FreqD<Integer> nodeDist = new FreqD<Integer>(nodeIds, TxtReader.calculateRepart(numberNodes, typeRepart));
 
 		// Getting starting time of the requests
 		long dateInitialRequest = (Long) validRequest.get(0).get(0);
@@ -358,9 +362,6 @@ public final class Generation {
 		// Adding requests to device
 		Device.Builder device = Device.newBuilder();
 		for (int request = 0; request < validRequest.get(0).size(); request++) {
-
-			// Number of data nodes serving the request
-			int nNodesServingRequest = Launcher.randGint(numberNodes / 2., numberNodes / 6., 0, numberNodes);
 
 			// Adding destination nodes
 			HashSet<Integer> dataNodeDestination = new HashSet<Integer>();
@@ -377,20 +378,21 @@ public final class Generation {
 			requestBuilder.setRequestId(request + 1);
 			requestBuilder.setComponentId("1");
 			requestBuilder.setApiId("1_1");
-
-			// TODO multiple applications
-			requestBuilder.setApplicationId(appLandscape.getApplications(0).getApplicationId());
-
-			// TODO calculate data to transfer
-			requestBuilder.setDataToTransfer(1);
+			requestBuilder.addAllDataNodes(dataNodeDestination);
+			requestBuilder.setApplicationId(appLandscape.getApplications(0).getApplicationId());// TODO multiple
+																								// applications
 
 			// TODO calculate expected duration
-			requestBuilder.setExpectedDuration(100);
+			SpecRequest specs = (SpecRequest) validRequest.get(5).get(request);
+			int expectedDuration = (int) (specs.getAvgLatency() / timeUnits);// milliseconds
+			requestBuilder.setExpectedDuration(expectedDuration);
 
-			// TODO calculate MIPS for request, fix bug zero
-			requestBuilder.setMipsDataNodes(Generation.DataNodeToES_mips);
-
-			requestBuilder.addAllDataNodes(dataNodeDestination);
+			// TODO calculate MIPS for request
+			int mipsPerDataNode = specs.getnbOpCount();
+			requestBuilder.setMipsDataNodes(mipsPerDataNode);
+			
+			// TODO calculate data to transfer
+			requestBuilder.setDataToTransfer(1);
 
 			device.addRequests(requestBuilder.build());
 		}
@@ -411,7 +413,7 @@ public final class Generation {
 	 * LinknovateValidarionRAM.GenerateLinknovateValidationApplication (@author
 	 * Malika)
 	 */
-	public static ApplicationLandscape GenerateApplicationLandscape(int appQty, int NB_PRIMARYSHARDS,
+	public static ApplicationLandscape GenerateAppLandscape(int appQty, int NB_PRIMARYSHARDS,
 			Infrastructure infrastructure) {
 
 		long startTime = System.currentTimeMillis();
@@ -436,24 +438,19 @@ public final class Generation {
 			Application.Builder appBuilder = Application.newBuilder();
 			appBuilder.setApplicationId("" + appCounter).setApplicationName("" + appCounter);
 
-			/*
-			 * Component for WS
-			 */
+			/**/
+			// Component for WS
 			Component.Builder webServerBuilder = Component.newBuilder();
 			webServerBuilder.setComponentName("Web server").setComponentId("1").setIsLoadbalanced(false);
 
-			/*
-			 * Deployment for WS
-			 */
+			// Deployment for WS
 			Deployment.Builder deployment_webServer = Deployment.newBuilder();
 			deployment_webServer.setNodeId(nodeIds.get(nodesCounter));
 			// reset or advance counter
 			nodesCounter = (nodesCounter == indexNmberOfNodes) ? 0 : nodesCounter + 1;
 			webServerBuilder.setDeployment(deployment_webServer.build());
 
-			/*
-			 * Api paths VM1
-			 */
+			// Api paths WS
 			// path 1
 			String apiId = "1_1"; // Component ID, API ID
 			Component.Api.Builder webServerApi_1 = Component.Api.newBuilder();
@@ -491,6 +488,7 @@ public final class Generation {
 			veFlavour_controlPlane.setStorage(vmStorage);
 			webServerBuilder.setFlavour(veFlavour_controlPlane.build());
 			appBuilder.addComponents(webServerBuilder.build());
+			/**/
 
 			/*
 			 * Component for ES client

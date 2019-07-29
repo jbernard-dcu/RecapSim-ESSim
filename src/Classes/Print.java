@@ -10,9 +10,9 @@ import eu.recap.sim.models.WorkloadModel.Workload;
 
 public class Print {
 	
-	public static void printMapMonitoring(TreeMap<Double,List<Double>> map) {
+	public static <T> void printMapMonitoring(TreeMap<Double,List<T>> map) {
 		for(double key:map.keySet()) {
-			System.out.println(key+", "+map.get(key).toString());
+			System.out.printf("%8s %1s %30s", String.format("%.2f", key)," ",map.get(key).toString()+"\n");
 		}
 	}
 	
