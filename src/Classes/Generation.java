@@ -271,7 +271,7 @@ public final class Generation {
 			}
 
 			System.out.println("shardDist:" + shardDist.toString());
-
+			
 			List<Integer> destinationNodes = request.getDataNodesList();
 			for (Shard dest : shardDist) {
 				int add = Integer.valueOf(dest.getNode().getId().substring(2)) - 1; // counting starts at 1
@@ -324,7 +324,7 @@ public final class Generation {
 	 * Method to generate a workload from the input data (3/9 nodes).
 	 * 
 	 * @param numberNodes : choose 3 or 9 to choose the workload
-	 * @param nbRequest   : set to 0 to use full workload, else the workload is
+	 * @param nbRequest   : set to negative or 0 to use full workload, else the workload is
 	 *                    reduced to <code>nbRequest</code> requests
 	 */
 	public static Workload GenerateYCSBWorkload(int numberNodes, ApplicationLandscape appLandscape, int nbRequest)
@@ -335,18 +335,17 @@ public final class Generation {
 		// Reading input file
 		List<List<Object>> validRequest = TxtReader.mergeWorkloads();
 
-		if (nbRequest != 0) {
-			// For quicker testing, max 83 requests
-			List<List<Object>> test = new ArrayList<List<Object>>();
+		if (nbRequest > 0 && nbRequest <= validRequest.get(0).size()) {
+			List<List<Object>> reducedValidRequest = new ArrayList<List<Object>>();
 			for (int field = 0; field < validRequest.size(); field++) {
-				test.add(new ArrayList<Object>());
+				reducedValidRequest.add(new ArrayList<Object>());
 			}
 			for (int time = 0; time < nbRequest; time++) {
 				for (int field = 0; field < validRequest.size(); field++) {
-					test.get(field).add(validRequest.get(field).get(time));
+					reducedValidRequest.get(field).add(validRequest.get(field).get(time));
 				}
 			}
-			validRequest = test;
+			validRequest = reducedValidRequest;
 		}
 
 		// Calculating frequency distribution
@@ -363,34 +362,37 @@ public final class Generation {
 		Device.Builder device = Device.newBuilder();
 		for (int request = 0; request < validRequest.get(0).size(); request++) {
 
-			// Adding destination nodes
-			HashSet<Integer> dataNodeDestination = new HashSet<Integer>();
-			while (dataNodeDestination.size() < nNodesServingRequest) {
-				int destinationNode = nodeDist.sample();
-				if (!dataNodeDestination.contains(destinationNode))
-					dataNodeDestination.add(destinationNode);
-			}
-
-			long dateRequest = (Long) validRequest.get(0).get(request);
-
 			Request.Builder requestBuilder = Request.newBuilder();
-			requestBuilder.setTime(dateRequest - dateInitialRequest);
+
 			requestBuilder.setRequestId(request + 1);
 			requestBuilder.setComponentId("1");
 			requestBuilder.setApiId("1_1");
+			// TODO multiple applications
+			requestBuilder.setApplicationId(appLandscape.getApplications(0).getApplicationId());
+			
+			// Adding destination nodes
+			HashSet<Integer> dataNodeDestination = new HashSet<Integer>();
+			while (dataNodeDestination.size() < nNodesServingRequest) {
+				dataNodeDestination.add(nodeDist.sample());
+			}
 			requestBuilder.addAllDataNodes(dataNodeDestination);
-			requestBuilder.setApplicationId(appLandscape.getApplications(0).getApplicationId());// TODO multiple
-																								// applications
 
+			long dateRequest = (Long) validRequest.get(0).get(request);
+			requestBuilder.setTime(dateRequest - dateInitialRequest);
+
+			
 			// TODO calculate expected duration
 			SpecRequest specs = (SpecRequest) validRequest.get(5).get(request);
-			int expectedDuration = (int) (specs.getAvgLatency() / timeUnits);// milliseconds
+			int expectedDuration = (int) (specs.getAvgLatency()/1000);// milliseconds
 			requestBuilder.setExpectedDuration(expectedDuration);
 
 			// TODO calculate MIPS for request
-			int mipsPerDataNode = specs.getnbOpCount();
-			requestBuilder.setMipsDataNodes(mipsPerDataNode);
-			
+			//int mipsPerDataNode = ((Double)validRequest.get(3).get(request)).intValue();
+			double cpuFrequency = 3000.0;
+			int requestCpuUnits = (int)((specs.getAvgLatency())*cpuFrequency/1_000_000);
+			int miPerDataNode = Math.max(requestCpuUnits, 0);			
+			requestBuilder.setMipsDataNodes(miPerDataNode);
+
 			// TODO calculate data to transfer
 			requestBuilder.setDataToTransfer(1);
 
