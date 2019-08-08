@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Random;
 import java.util.TreeMap;
 
+import org.apache.commons.math3.distribution.ExponentialDistribution;
+
 import Classes.Document;
 import Classes.Generation;
 import Classes.Shard;
@@ -61,7 +63,7 @@ public class Launcher {
 		/////////////////// DATABASE GENERATION
 		///////////////////////////////////////////////////////////////////////////////////////////////
 
-		TreeMap<Long, Double> termDist = ZipfDist(NB_TERMSET,1.);
+		TreeMap<Long, Double> termDist = ZipfDist(NB_TERMSET, 1.);
 		// TreeMap<Long, Double> termDist = UnifDist(NB_TERMSET);
 
 		List<Document> data = Generation.GenerateDatabase(termDist, NB_DOCS, AVG_NWDOC, STD_NWDOC);
@@ -78,16 +80,19 @@ public class Launcher {
 		/////////////////// APPLICATION LANDSCAPE
 		///////////////////////////////////////////////////////////////////////////////////////////////
 
-		ApplicationLandscape appLandscape = Generation.GenerateAppLandscape(NB_APPS, NB_PRIMARYSHARDS,
-				infrastructure);
+		ApplicationLandscape appLandscape = Generation.GenerateAppLandscape(NB_APPS, NB_PRIMARYSHARDS, infrastructure);
 
 		///////////////////////////////////////////////////////////////////////////////////////////////
 		/////////////////// WORKLOAD GENERATION
 		///////////////////////////////////////////////////////////////////////////////////////////////
 
-		Workload workload = Generation.GenerateYCSBWorkload(NB_PRIMARYSHARDS, appLandscape, 10);
-		// Workload workload = Generation.GenerateSyntheticWorkload(termDist,NB_TERMSET,
-		// NB_REQUEST, appLandscape, shardBase);
+		int start = 83 - 10;
+		int nbRequest = 10;
+
+		Workload workload = Generation.GenerateYCSBWorkload(NB_PRIMARYSHARDS, appLandscape, start, nbRequest);
+		// Workload workload =
+		// Generation.GenerateSyntheticWorkload(termDist,NB_TERMSET,NB_REQUEST,
+		// appLandscape, shardBase);
 
 		///////////////////////////////////////////////////////////////////////////////////////////////
 		/////////////////// RESULTS
@@ -170,7 +175,7 @@ public class Launcher {
 	 * Creates a basic Zipfian distribution, useful to create the parameter of FreqD
 	 * constructor
 	 */
-	public static TreeMap<Long, Double> ZipfDist(int nbTermSet, double param){
+	public static TreeMap<Long, Double> ZipfDist(int nbTermSet, double param) {
 		TreeMap<Long, Double> res = new TreeMap<Long, Double>();
 		for (long i = 1; i <= nbTermSet; i++) {
 			res.put(i, 1. / Math.pow(i, param));
@@ -191,7 +196,7 @@ public class Launcher {
 	 */
 	public static long getNextTime() {
 		double lambda = 0.0001;
-		return (long) (new ExpD(lambda).sample());
+		return (long) (new ExponentialDistribution(1./lambda).sample());
 	}
 
 	/**

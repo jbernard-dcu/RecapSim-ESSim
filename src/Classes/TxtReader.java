@@ -10,14 +10,64 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 public class TxtReader {
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws InterruptedException {
+		long startTime = System.currentTimeMillis();
 
-		System.out.println(mergeWorkloads().toString());
+		List<List<Object>> aaa = mergeWorkloads2();
 
+		for (Object i : aaa.get(0)) {
+			System.out.println((Long) i - (Long) aaa.get(0).get(0));
+		}
+
+		System.out.println("size:" + aaa.get(0).size());
+		System.out.println("time:" + (System.currentTimeMillis() - startTime) / 1000.);
+	}
+
+	/**
+	 * Calculates the average weights of operations of each type, based on the
+	 * average latency of requests of each type</br>
+	 * These weights can help us calculate MI necessary to execute requests
+	 */
+	@SuppressWarnings("unchecked")
+	public static Map<String, Double> calculateCyclesType() {
+
+		List<SpecRequest> specs = (List<SpecRequest>) (List<?>) TxtReader.mergeWorkloads().get(5);
+
+		Map<String, Double> tam = new HashMap<String, Double>();
+		Map<String, Integer> sizes = new HashMap<String, Integer>();
+
+		for (SpecRequest spec : specs) {
+			String type = spec.getType();
+			double avgLat = spec.getAvgLatency();
+
+			if (!sizes.containsKey(type))
+				sizes.put(type, 0);
+
+			if (tam.containsKey(type))
+				avgLat += tam.get(type);
+
+			tam.put(type, avgLat);
+			sizes.put(type, sizes.get(type) + 1);
+		}
+
+		double total = 0;
+		for (String type : tam.keySet()) {
+			tam.put(type, tam.get(type) / sizes.get(type));
+			total += tam.get(type);
+		}
+
+		for (String type : tam.keySet()) {
+			tam.put(type, tam.get(type) / total);
+		}
+
+		return tam;
 	}
 
 	/**
@@ -25,7 +75,7 @@ public class TxtReader {
 	 * nodes, based on CpuLoad
 	 */
 	@SuppressWarnings("unchecked")
-	public static Double[] calculateRepart(int nbNodes, typeData type) {
+	public static Double[] calculateRepartNodes(int nbNodes, typeData type) {
 
 		int[] vms;
 		switch (nbNodes) {
@@ -146,10 +196,6 @@ public class TxtReader {
 
 	}
 
-	public enum typeData {
-		CpuLoad, DiskIOReads, DiskIOWrites, MemoryUsage, NetworkReceived, NetworkSent
-	}
-
 	public static List<List<Object>> readMonitoring(int numberNodes, typeData type, int vm) {
 		String path = "/elasticsearch_nodes-" + numberNodes + "_replication-3/nodes-" + numberNodes
 				+ "_replication-3/evaluation_run_2018_11_25-";
@@ -214,55 +260,140 @@ public class TxtReader {
 	}
 
 	/**
-	 * 0=Date, 1=time, 2=nOp, 3=throughput, 4=estTime, 5=Spec
+	 * 0=date, 1=type, 2=latency</br>
 	 */
-	@SuppressWarnings({ "unchecked" })
-	public static List<List<Object>> mergeWorkloads() {
-		/*
-		 * Sorting requests from both workloads
-		 */
-		List<List<Object>> validRequestsW = getRequests(9, writeOrRead.W);
-		List<List<Object>> validRequestsR = getRequests(9, writeOrRead.R);
+	@SuppressWarnings("deprecation")
+	public static List<List<Object>> getRequests2(int numberNodes, writeOrRead pick) {
+		String path = "/elasticsearch_nodes-" + numberNodes + "_replication-3/nodes-" + numberNodes
+				+ "_replication-3/evaluation_run_2018_11_25-";
+		if (numberNodes == 3)
+			path += "19_10/data/";
+		if (numberNodes == 9)
+			path += "22_40/data/";
 
-		List<Long> vRWdates = (List<Long>) (List<?>) validRequestsW.get(0);
-		List<Long> vRRdates = (List<Long>) (List<?>) validRequestsR.get(0);
-
-		List<List<Object>> validRequests = new ArrayList<List<Object>>();
-		for (int field = 0; field < 6; field++) {
-			validRequests.add(new ArrayList<Object>());
+		String fileName = "";
+		switch (pick) {
+		case W:
+			fileName = "load.txt";
+			break;
+		case R:
+			fileName = "transaction.txt";
 		}
 
-		int indexWmin;
-		int indexRmin;
-		int indexMin;
-		List<List<Object>> vRmin;
-		for (int index = 0; index < vRWdates.size() + vRRdates.size(); index++) {
-			indexWmin = vRWdates.indexOf(Collections.min(vRWdates));
-			indexRmin = vRRdates.indexOf(Collections.min(vRRdates));
+		String line = null;
 
-			if (vRWdates.get(indexWmin) >= vRRdates.get(indexRmin)) {
-				indexMin = indexRmin;
-				vRmin = validRequestsR;
-			} else {
-				indexMin = indexWmin;
-				vRmin = validRequestsW;
-			}
+		List<List<Object>> validRequest = new ArrayList<List<Object>>();
 
-			for (int field = 0; field < 6; field++) {
-				validRequests.get(field).add(vRmin.get(field).get(indexMin));
-			}
-
-			if (vRmin.equals(validRequestsW)) {
-				vRWdates.set(indexWmin, Long.MAX_VALUE);
-			} else {
-				vRRdates.set(indexRmin, Long.MAX_VALUE);
-			}
-
+		final int NB_FIELDS = 6;
+		for (int field = 0; field < NB_FIELDS; field++) {
+			validRequest.add(new ArrayList<Object>());
 		}
 
-		return validRequests;
+		try {
+			File file = new File(System.getProperty("user.dir") + File.separator + path + File.separator + fileName);
+
+			FileReader fileReader = new FileReader(file);
+			BufferedReader bufferedReader = new BufferedReader(fileReader);
+
+			long previousDate = 0;
+
+			while ((line = bufferedReader.readLine()) != null) {
+
+				if (line.startsWith("2018") && !line.contains("Thread") && line.contains("[")) {
+
+					// Date
+					int start = 11;
+					int hours = Integer.parseInt(getWord(line, start, ":"));
+					int minutes = Integer.parseInt(getWord(line, start + 3, ":"));
+					int seconds = Integer.parseInt(getWord(line, start + 6, ":"));
+					int milliseconds = Integer.parseInt(getWord(line, start + 9, " "));
+					long addDate = milliseconds + 1000 * seconds + 1000 * 60 * minutes + 1000 * 60 * 60 * hours
+							+ new Date(2018, 11, 25).getTime();
+
+					// If first value, set duration to 10 000
+					long duration = (previousDate != 0) ? addDate - previousDate : 10_000;
+
+					// Building the list of wanted request types
+					List<String> requestTypes = Arrays.asList("READ", "INSERT", "UPDATE");
+
+					// Request specs and add all
+					while (start > 0) {
+						start = line.indexOf("[", start) + 1;
+
+						SpecRequest addSpecs = new SpecRequest(getWord(line, start, "]"));
+						String addType = addSpecs.getType();
+						int nbOps = addSpecs.getOpCount();
+						double addLatency = addSpecs.getAvgLatency();
+
+						/*
+						 * The processing time rises fast with the number of requests, we don't need 2
+						 * million requests so we only take a proportion TODO : optimisation to compare
+						 * full workloads
+						 */
+						nbOps /= 100;
+
+						if (requestTypes.contains(addType)) {
+							for (int op = 0; op < nbOps; op++) {
+								validRequest.get(0).add(addDate + (long) (duration * op / nbOps));
+								validRequest.get(1).add(addType);
+								validRequest.get(2).add(addLatency);
+							}
+						}
+					}
+
+					previousDate = addDate;
+
+				}
+			}
+
+			bufferedReader.close();
+
+		} catch (Exception ex) {
+			ex.printStackTrace();
+		}
+
+		return validRequest;
 	}
 
+	/**
+	 * 0=date(long), 1=type(String), 2=latency(double)
+	 */
+	@SuppressWarnings("unchecked")
+	public static final List<List<Object>> mergeWorkloads2() {
+		List<List<Object>> workloadR = getRequests2(9, writeOrRead.R);
+		List<List<Object>> workloadW = getRequests2(9, writeOrRead.W);
+
+		List<List<Object>> workloadMerged = new ArrayList<List<Object>>();
+		for (int field = 0; field < 3; field++) {
+			workloadMerged.add(new ArrayList<>());
+		}
+
+		int sizeMerged = workloadR.get(0).size() + workloadW.get(0).size();
+
+		while (workloadMerged.get(0).size() < sizeMerged) {
+
+			long minR = Collections.min((List<Long>) (List<?>) workloadR.get(0));
+			long minW = Collections.min((List<Long>) (List<?>) workloadW.get(0));
+			long min = Math.min(minR, minW);
+
+			List<List<Object>> workloadMin = (min == minR) ? workloadR : workloadW;
+			int indexMin = workloadMin.get(0).indexOf(min);
+
+			for (int field = 0; field < 3; field++) {
+				workloadMerged.get(field).add(workloadMin.get(field).get(indexMin));
+			}
+
+			((min == minR) ? workloadR : workloadW).get(0).set(indexMin, Long.MAX_VALUE);
+
+		}
+
+		return workloadMerged;
+
+	}
+
+	/**
+	 * 0=Date, 1=time, 2=nOp, 3=throughput, 4=estTime, 5=specs
+	 */
 	@SuppressWarnings("deprecation")
 	public static List<List<Object>> getRequests(int numberNodes, writeOrRead pick) {
 		String path = "/elasticsearch_nodes-" + numberNodes + "_replication-3/nodes-" + numberNodes
@@ -338,7 +469,6 @@ public class TxtReader {
 					if (line.contains("[")) {
 						start = line.indexOf("[", start) + 1;
 						while (start > 0) {
-							// checking the type of request before adding
 							SpecRequest addSpecs = new SpecRequest(getWord(line, start, "]"));
 
 							if (requestTypes.contains(addSpecs.getType())) {
@@ -365,8 +495,64 @@ public class TxtReader {
 		return validRequest;
 	}
 
+	/**
+	 * 0=Date, 1=time, 2=nOp, 3=throughput, 4=estTime, 5=Spec </br>
+	 * Merges the workloads of load and transaction for the 9 nodes case, also sorts
+	 * all operations according to their date
+	 */
+	@SuppressWarnings({ "unchecked" })
+	public final static List<List<Object>> mergeWorkloads() {
+		/*
+		 * Sorting requests from both workloads
+		 */
+		List<List<Object>> validRequestsW = getRequests(9, writeOrRead.W);
+		List<List<Object>> validRequestsR = getRequests(9, writeOrRead.R);
+
+		List<Long> vRWdates = (List<Long>) (List<?>) validRequestsW.get(0);
+		List<Long> vRRdates = (List<Long>) (List<?>) validRequestsR.get(0);
+
+		List<List<Object>> validRequests = new ArrayList<List<Object>>();
+		for (int field = 0; field < 6; field++) {
+			validRequests.add(new ArrayList<Object>());
+		}
+
+		int indexWmin;
+		int indexRmin;
+		int indexMin;
+		List<List<Object>> vRmin;
+		for (int index = 0; index < vRWdates.size() + vRRdates.size(); index++) {
+			indexWmin = vRWdates.indexOf(Collections.min(vRWdates));
+			indexRmin = vRRdates.indexOf(Collections.min(vRRdates));
+
+			if (vRWdates.get(indexWmin) >= vRRdates.get(indexRmin)) {
+				indexMin = indexRmin;
+				vRmin = validRequestsR;
+			} else {
+				indexMin = indexWmin;
+				vRmin = validRequestsW;
+			}
+
+			for (int field = 0; field < 6; field++) {
+				validRequests.get(field).add(vRmin.get(field).get(indexMin));
+			}
+
+			if (vRmin.equals(validRequestsW)) {
+				vRWdates.set(indexWmin, Long.MAX_VALUE);
+			} else {
+				vRRdates.set(indexRmin, Long.MAX_VALUE);
+			}
+
+		}
+
+		return validRequests;
+	}
+
 	public enum writeOrRead {
 		W, R
+	}
+
+	public enum typeData {
+		CpuLoad, DiskIOReads, DiskIOWrites, MemoryUsage, NetworkReceived, NetworkSent
 	}
 
 	//////////////////////////////////////////////////////////////////////////////////////////////////
@@ -445,18 +631,6 @@ class SpecRequest {
 	private int q999;
 	private int q9999;
 
-	public SpecRequest() {
-		this.type = "NONE";
-		this.countOp = 0;
-		this.max = 0;
-		this.min = 0;
-		this.avg = 0;
-		this.q90 = 0;
-		this.q99 = 0;
-		this.q999 = 0;
-		this.q9999 = 0;
-	}
-
 	public SpecRequest(String init) {
 		this.type = TxtReader.getWord(init, 0, ": ");
 		this.countOp = Integer.parseInt(TxtReader.getWord(init, init.indexOf("Count=") + 6, ", "));
@@ -469,8 +643,13 @@ class SpecRequest {
 		this.q9999 = Integer.parseInt(init.substring(init.indexOf("99.99=") + 6));
 	}
 
-	public String getType() {
-		return this.type;
+	/**
+	 * Returns the frequency distribution of latency for this specRequest. Latencies
+	 * for all operations associated to this SpecRequest can be picked from this
+	 * distribution
+	 */
+	public Distribution.FreqD<Double> getDistribution(int nbTerms) {
+		return null;
 	}
 
 	public String toString() {
@@ -487,6 +666,10 @@ class SpecRequest {
 		return list.toString() + "\n";
 	}
 
+	public String getType() {
+		return this.type;
+	}
+
 	/**
 	 * Return the average latency per operation for this request in µs
 	 */
@@ -497,7 +680,7 @@ class SpecRequest {
 	/**
 	 * Return the number of operations performed for this request
 	 */
-	public int getnbOpCount() {
+	public int getOpCount() {
 		return this.countOp;
 	}
 }

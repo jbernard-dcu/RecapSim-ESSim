@@ -3,16 +3,19 @@ package Classes;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeMap;
 
+import org.apache.commons.math3.distribution.ExponentialDistribution;
+
 import Classes.TxtReader.typeData;
 import Distribution.FreqD;
-import Distribution.ExpD;
 import Main.Launcher;
 import eu.recap.sim.models.ApplicationModel.Application;
 import eu.recap.sim.models.ApplicationModel.ApplicationLandscape;
@@ -48,21 +51,22 @@ public final class Generation {
 
 	/* Sites */
 	static final int numberSites = 1;
-	static int[] numberNodesPerSite = { /* 2 + */Launcher.NB_PRIMARYSHARDS };// WS + ES + Data nodes
+	static int[] numberNodesPerSite = { /* 2 + */ Launcher.NB_PRIMARYSHARDS };// WS + ES + Data nodes
 
 	// Application landscape
 	// VM memory and storage expressed in Mo
 	// all VMs are the same
 
 	// Values changed for the german workload
+	// 2, 4000, 70000
 	static final int vmCores = 2;
 	static final int vmMemory = 4_000; // 5,000 in output
 	static final int vmStorage = 70_000;
 
 	/* ES client */
-	static int esClient_cores = 16;
-	static int esClient_memory = 112_000;
-	static int esClient_storage = 181_000;
+	static int esClient_cores = 8;
+	static int esClient_memory = 8_000;
+	static int esClient_storage = 20_000;
 
 	/* Hosts */
 	static final int[][] cpuFrequency = initSameValue(numberSites, numberNodesPerSite, 3000); // MIPS or 2.6 GHz
@@ -217,7 +221,7 @@ public final class Generation {
 
 		// Creating Exp law
 		double lambda = 10. / NB_REQUEST;
-		ExpD exp = new ExpD(lambda);
+		ExponentialDistribution exp = new ExponentialDistribution(1./lambda);
 
 		// Filling clientIds list
 		String clientID;
@@ -271,7 +275,7 @@ public final class Generation {
 			}
 
 			System.out.println("shardDist:" + shardDist.toString());
-			
+
 			List<Integer> destinationNodes = request.getDataNodesList();
 			for (Shard dest : shardDist) {
 				int add = Integer.valueOf(dest.getNode().getId().substring(2)) - 1; // counting starts at 1
@@ -324,23 +328,25 @@ public final class Generation {
 	 * Method to generate a workload from the input data (3/9 nodes).
 	 * 
 	 * @param numberNodes : choose 3 or 9 to choose the workload
-	 * @param nbRequest   : set to negative or 0 to use full workload, else the workload is
-	 *                    reduced to <code>nbRequest</code> requests
+	 * @param nbRequest   : set to negative or 0 to use full workload, else the
+	 *                    workload is reduced to <code>nbRequest</code> requests
+	 * @throws InterruptedException
 	 */
-	public static Workload GenerateYCSBWorkload(int numberNodes, ApplicationLandscape appLandscape, int nbRequest)
-			throws FileNotFoundException {
+	public static Workload GenerateYCSBWorkload(int numberNodes, ApplicationLandscape appLandscape, int start,
+			int nbRequest) throws FileNotFoundException, InterruptedException {
 
 		long startTime = System.currentTimeMillis();
 
 		// Reading input file
-		List<List<Object>> validRequest = TxtReader.mergeWorkloads();
+		List<List<Object>> validRequest = TxtReader.mergeWorkloads2();
 
-		if (nbRequest > 0 && nbRequest <= validRequest.get(0).size()) {
+		// reducing the requestSet if necessary
+		if (nbRequest > 0 && start >= 0 && start + nbRequest <= validRequest.get(0).size()) {
 			List<List<Object>> reducedValidRequest = new ArrayList<List<Object>>();
 			for (int field = 0; field < validRequest.size(); field++) {
 				reducedValidRequest.add(new ArrayList<Object>());
 			}
-			for (int time = 0; time < nbRequest; time++) {
+			for (int time = start; time < start + nbRequest; time++) {
 				for (int field = 0; field < validRequest.size(); field++) {
 					reducedValidRequest.get(field).add(validRequest.get(field).get(time));
 				}
@@ -353,14 +359,25 @@ public final class Generation {
 		for (int nodeId = 1; nodeId <= numberNodes; nodeId++) {
 			nodeIds.add(nodeId);
 		}
-		FreqD<Integer> nodeDist = new FreqD<Integer>(nodeIds, TxtReader.calculateRepart(numberNodes, typeRepart));
+		FreqD<Integer> nodeDist = new FreqD<Integer>(nodeIds, TxtReader.calculateRepartNodes(numberNodes, typeRepart));
 
 		// Getting starting time of the requests
 		long dateInitialRequest = (Long) validRequest.get(0).get(0);
 
+		// Clock parameters
+		final double cpuFrequency = 3E9; // Hz
+		final double msPerCycle = 1_000. / (cpuFrequency);
+
+		final int MULT_CPO = 10;
+		final double MULT_MI = 3;
+
 		// Adding requests to device
 		Device.Builder device = Device.newBuilder();
 		for (int request = 0; request < validRequest.get(0).size(); request++) {
+			
+			long date = (Long) validRequest.get(0).get(request);
+			String type = (String) validRequest.get(1).get(request);
+			double avgLatency = (double) validRequest.get(2).get(request);
 
 			Request.Builder requestBuilder = Request.newBuilder();
 
@@ -369,7 +386,8 @@ public final class Generation {
 			requestBuilder.setApiId("1_1");
 			// TODO multiple applications
 			requestBuilder.setApplicationId(appLandscape.getApplications(0).getApplicationId());
-			
+			requestBuilder.setTime(date - dateInitialRequest);
+
 			// Adding destination nodes
 			HashSet<Integer> dataNodeDestination = new HashSet<Integer>();
 			while (dataNodeDestination.size() < nNodesServingRequest) {
@@ -377,24 +395,21 @@ public final class Generation {
 			}
 			requestBuilder.addAllDataNodes(dataNodeDestination);
 
-			long dateRequest = (Long) validRequest.get(0).get(request);
-			requestBuilder.setTime(dateRequest - dateInitialRequest);
+			// TODO calculate data to transfer
+			requestBuilder.setDataToTransfer(1);
 
-			
 			// TODO calculate expected duration
-			SpecRequest specs = (SpecRequest) validRequest.get(5).get(request);
-			int expectedDuration = (int) (specs.getAvgLatency()/1000);// milliseconds
+			// https://www.d.umn.edu/~gshute/arch/performance-equation.xhtml
+			int cyclesPerOp = (int) (MULT_CPO * TxtReader.calculateCyclesType().get(type));
+			int opsPerRequest = 1;
+			double processingTime = msPerCycle * cyclesPerOp * opsPerRequest;
+			int expectedDuration = (int) (processingTime + avgLatency / 1_000); // in milliseconds
 			requestBuilder.setExpectedDuration(expectedDuration);
 
 			// TODO calculate MIPS for request
-			//int mipsPerDataNode = ((Double)validRequest.get(3).get(request)).intValue();
-			double cpuFrequency = 3000.0;
-			int requestCpuUnits = (int)((specs.getAvgLatency())*cpuFrequency/1_000_000);
-			int miPerDataNode = Math.max(requestCpuUnits, 0);			
-			requestBuilder.setMipsDataNodes(miPerDataNode);
-
-			// TODO calculate data to transfer
-			requestBuilder.setDataToTransfer(1);
+			int miPerDataNode = (int) (MULT_MI * cpuFrequency * 1E-6 * expectedDuration / 1_000); // duration(s)*freq(Hz)/1E6
+																									// = mi
+			requestBuilder.setMipsDataNodes(miPerDataNode * timeUnits);
 
 			device.addRequests(requestBuilder.build());
 		}

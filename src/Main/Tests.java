@@ -23,7 +23,7 @@ public class Tests {
 	public static TreeMap<Double, List<Double>> cpuSimu;
 	public static TreeMap<Double, List<Double>> cpuReal;
 
-	public static void main(String[] args) throws FileNotFoundException {
+	public static void main(String[] args) throws FileNotFoundException, InterruptedException {
 
 		/*
 		 * Simulation of data
@@ -31,7 +31,7 @@ public class Tests {
 		Infrastructure rim = Generation.GenerateInfrastructure("General infrastructure");
 		ApplicationLandscape ram = Generation.GenerateAppLandscape(Launcher.NB_APPS, Launcher.NB_PRIMARYSHARDS,
 				rim);
-		Workload rwm = Generation.GenerateYCSBWorkload(Launcher.NB_PRIMARYSHARDS, ram, 10);
+		Workload rwm = Generation.GenerateYCSBWorkload(Launcher.NB_PRIMARYSHARDS, ram, 83-10, 10);
 		Launcher launcher = new Launcher(rim, ram, rwm);
 
 		ramSimu = launcher.getRecapExperiment().getAllVmsRamUtilizationHistory();
