@@ -3,9 +3,14 @@ package Classes;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.commons.math3.analysis.integration.BaseAbstractUnivariateIntegrator;
+import org.apache.commons.math3.analysis.integration.IterativeLegendreGaussIntegrator;
+import org.apache.commons.math3.analysis.integration.LegendreGaussIntegrator;
 import org.apache.commons.math3.analysis.integration.SimpsonIntegrator;
+import org.apache.commons.math3.analysis.integration.TrapezoidIntegrator;
 import org.apache.commons.math3.fitting.SimpleCurveFitter;
 import org.apache.commons.math3.fitting.WeightedObservedPoints;
+import org.apache.commons.math3.special.Gamma;
 
 import Distribution.GammaFunc;
 
@@ -28,8 +33,10 @@ public class SpecRequest {
 
 		String init = "INSERT: Count=3938, Max=595967, Min=4680, Avg=38746.84, 90=71679, 99=241791, 99.9=544767, 99.99=595967";
 		SpecRequest specs = new SpecRequest(init);
+		
+		double startValue = 1.;
 
-		System.out.println(specs.calculateAlpha());
+		System.out.println(specs.fitParameter(startValue));
 	}
 
 	public SpecRequest(String init) {
@@ -49,16 +56,20 @@ public class SpecRequest {
 	 * that the parameter beta is linearly correlated to alpha since we already know
 	 * the mean of our distribution
 	 */
-	public double calculateAlpha() {
+	public double fitParameter(double startValue) {
 		WeightedObservedPoints dataObs = new WeightedObservedPoints();
 		dataObs.add(this.q90, 0.9);
 		dataObs.add(this.q99, 0.99);
 		dataObs.add(this.q999, 0.999);
 		dataObs.add(this.q9999, 0.9999);
 
-		double[] parameters = new double[] { 3 };
-		SimpsonIntegrator si = new SimpsonIntegrator();
-		GammaFunc gammaFunc = new GammaFunc(this.avg, si);
+		double[] parameters = new double[] { startValue };
+		
+		//BaseAbstractUnivariateIntegrator itg = new SimpsonIntegrator();
+		//BaseAbstractUnivariateIntegrator itg = new IterativeLegendreGaussIntegrator(100, 10, 100);
+		BaseAbstractUnivariateIntegrator itg=new TrapezoidIntegrator();
+		
+		GammaFunc gammaFunc = new GammaFunc(this.avg, itg);
 
 		SimpleCurveFitter fitter = SimpleCurveFitter.create(gammaFunc, parameters);
 		double[] calculatedParam = fitter.fit(dataObs.toList());

@@ -17,7 +17,7 @@ public class GammaFunc implements ParametricUnivariateFunction {
 	private double avg;
 	private BaseAbstractUnivariateIntegrator itg;
 
-	static final int maxEvals = Integer.MAX_VALUE;
+	static final int maxEvals = 100;
 
 	public GammaFunc(double avg, BaseAbstractUnivariateIntegrator itg) {
 		super();
@@ -30,6 +30,8 @@ public class GammaFunc implements ParametricUnivariateFunction {
 		double beta = alpha / this.avg;
 
 		double intValue = itg.integrate(maxEvals, t -> Math.pow(t, alpha - 1) * Math.exp(-t / beta), 0, x);
+		
+		System.out.println(intValue);
 
 		return (1. / (Gamma.gamma(alpha) * Math.pow(beta, alpha))) * intValue;
 	}
@@ -38,13 +40,12 @@ public class GammaFunc implements ParametricUnivariateFunction {
 		double alpha = parameters[0];
 		double beta = alpha / this.avg;
 
-		// We set F(x,alpha,beta)=C(alpha,beta)*I(x,alpha,beta)
+		// We have F(x,alpha,beta)=C(alpha,beta)*I(x,alpha,beta)
 		// Calculation of partial derivates
 		double C = 1 / (Gamma.gamma(alpha) * Math.pow(beta, alpha));
-
 		double I = itg.integrate(maxEvals, t -> Math.pow(t, alpha - 1) * Math.exp(-t / beta), 0, x);
 
-		double dGammadalpha = itg.integrate(maxEvals, t -> Math.log(t) * Math.pow(t, alpha - 1), 0, Double.MAX_VALUE);
+		double dGammadalpha = Gamma.gamma(alpha) * Gamma.digamma(alpha);
 		double dCdalpha = (dGammadalpha + Gamma.gamma(alpha) * FastMath.log(beta))
 				/ (Math.pow(beta, alpha) * Math.pow(Gamma.gamma(alpha), 2));
 
