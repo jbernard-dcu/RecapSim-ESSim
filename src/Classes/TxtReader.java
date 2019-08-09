@@ -15,9 +15,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
+import org.apache.commons.math3.analysis.ParametricUnivariateFunction;
+import org.apache.commons.math3.analysis.differentiation.DerivativeStructure;
 import org.apache.commons.math3.analysis.integration.BaseAbstractUnivariateIntegrator;
 import org.apache.commons.math3.analysis.integration.SimpsonIntegrator;
+import org.apache.commons.math3.fitting.SimpleCurveFitter;
+import org.apache.commons.math3.fitting.WeightedObservedPoints;
 import org.apache.commons.math3.special.Gamma;
+import org.apache.commons.math3.util.FastMath;
+
+import Distribution.GammaFunc;
 
 public class TxtReader {
 
@@ -619,107 +626,4 @@ public class TxtReader {
 		return res;
 	}
 
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////  SPECREQUEST
-/////////////////////////////////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////////////////////////////
-
-/**
- * Class modeling the specifications of a request, as given in the workload data
- */
-class SpecRequest {
-	private String type;
-	private int countOp;
-	private int max;
-	private int min;
-	private double avg;
-	private int q90;
-	private int q99;
-	private int q999;
-	private int q9999;
-
-	public static void main(String[] args) {
-		System.out.println(calculateAlpha(97983, 0.9, 52767.78));
-	}
-
-	public SpecRequest(String init) {
-		this.type = TxtReader.getWord(init, 0, ": ");
-		this.countOp = Integer.parseInt(TxtReader.getWord(init, init.indexOf("Count=") + 6, ", "));
-		this.max = Integer.parseInt(TxtReader.getWord(init, init.indexOf("Max=") + 4, ", "));
-		this.min = Integer.parseInt(TxtReader.getWord(init, init.indexOf("Min=") + 4, ", "));
-		this.avg = Double.parseDouble(TxtReader.getWord(init, init.indexOf("Avg=") + 4, ", "));
-		this.q90 = Integer.parseInt(TxtReader.getWord(init, init.indexOf("90=") + 3, ", "));
-		this.q99 = Integer.parseInt(TxtReader.getWord(init, init.indexOf("99=") + 3, ", "));
-		this.q999 = Integer.parseInt(TxtReader.getWord(init, init.indexOf("99.9=") + 5, ", "));
-		this.q9999 = Integer.parseInt(init.substring(init.indexOf("99.99=") + 6));
-	}
-
-	public static double calculateAlpha(double x, double proba, double avg) {
-		double a = 0;
-		double b = 10_000;
-		double moy;
-
-		int iter = 0;
-		final int nIter = 10;
-		while (iter < nIter) {
-			moy = (a + b) / 2.;
-			System.out.println(moy);
-			if ((cdfGamma(x, a, avg) - proba) * (cdfGamma(x, b, avg) - proba) <= 0) {
-				b = moy;
-			} else {
-				a = moy;
-			}
-			
-			System.out.println(cdfGamma(x, a, avg));
-			iter++;
-		}
-
-		return cdfGamma(x, a, avg);
-
-	}
-
-	public static double cdfGamma(double x, double alpha, double avg) {
-		double beta = avg / alpha;
-
-		SimpsonIntegrator si = new SimpsonIntegrator();
-		double intValue = si.integrate(Integer.MAX_VALUE, t -> Math.pow(t, alpha - 1) * Math.exp(-t / beta), 0, x);
-		
-		System.out.println("calculated");
-		
-		return (1. / (Gamma.gamma(alpha) * Math.pow(beta, alpha)) * intValue);
-	}
-
-	public String toString() {
-		List<Object> list = new ArrayList<Object>();
-		list.add(type);
-		list.add(countOp);
-		list.add(max);
-		list.add(min);
-		list.add(avg);
-		list.add(q90);
-		list.add(q99);
-		list.add(q999);
-		list.add(q9999);
-		return list.toString() + "\n";
-	}
-
-	public String getType() {
-		return this.type;
-	}
-
-	/**
-	 * Return the average latency per operation for this request in µs
-	 */
-	public double getAvgLatency() {
-		return this.avg;
-	}
-
-	/**
-	 * Return the number of operations performed for this request
-	 */
-	public int getOpCount() {
-		return this.countOp;
-	}
 }
