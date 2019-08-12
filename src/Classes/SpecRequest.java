@@ -3,19 +3,13 @@ package Classes;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.math3.analysis.integration.BaseAbstractUnivariateIntegrator;
-import org.apache.commons.math3.analysis.integration.IterativeLegendreGaussIntegrator;
-import org.apache.commons.math3.analysis.integration.LegendreGaussIntegrator;
-import org.apache.commons.math3.analysis.integration.SimpsonIntegrator;
-import org.apache.commons.math3.analysis.integration.TrapezoidIntegrator;
+import org.apache.commons.math3.analysis.ParametricUnivariateFunction;
 import org.apache.commons.math3.fitting.SimpleCurveFitter;
 import org.apache.commons.math3.fitting.WeightedObservedPoints;
-import org.apache.commons.math3.special.Gamma;
-
-import Distribution.GammaFunc;
 
 /***
  * Class modeling the specifications of a request, as given in the workload data
+ * 
  * @author Joseph
  */
 public class SpecRequest {
@@ -24,20 +18,10 @@ public class SpecRequest {
 	private int max;
 	private int min;
 	private double avg;
-	private int q90;
-	private int q99;
-	private int q999;
-	private int q9999;
-
-	public static void main(String[] args) {
-
-		String init = "INSERT: Count=3938, Max=595967, Min=4680, Avg=38746.84, 90=71679, 99=241791, 99.9=544767, 99.99=595967";
-		SpecRequest specs = new SpecRequest(init);
-		
-		double startValue = 1.;
-
-		System.out.println(specs.fitParameter(startValue));
-	}
+	private double q90;
+	private double q99;
+	private double q999;
+	private double q9999;
 
 	public SpecRequest(String init) {
 		this.type = TxtReader.getWord(init, 0, ": ");
@@ -56,22 +40,19 @@ public class SpecRequest {
 	 * that the parameter beta is linearly correlated to alpha since we already know
 	 * the mean of our distribution
 	 */
-	public double fitParameter(double startValue) {
+	public double fitParameter(ParametricUnivariateFunction f, double startValue) {
 		WeightedObservedPoints dataObs = new WeightedObservedPoints();
-		dataObs.add(this.q90, 0.9);
-		dataObs.add(this.q99, 0.99);
-		dataObs.add(this.q999, 0.999);
-		dataObs.add(this.q9999, 0.9999);
+
+		double div = 1E3;
+
+		dataObs.add(this.q90 / div, 0.9);
+		dataObs.add(this.q99 / div, 0.99);
+		dataObs.add(this.q999 / div, 0.999);
+		dataObs.add(this.q9999 / div, 0.9999);
 
 		double[] parameters = new double[] { startValue };
-		
-		//BaseAbstractUnivariateIntegrator itg = new SimpsonIntegrator();
-		//BaseAbstractUnivariateIntegrator itg = new IterativeLegendreGaussIntegrator(100, 10, 100);
-		BaseAbstractUnivariateIntegrator itg=new TrapezoidIntegrator();
-		
-		GammaFunc gammaFunc = new GammaFunc(this.avg, itg);
 
-		SimpleCurveFitter fitter = SimpleCurveFitter.create(gammaFunc, parameters);
+		SimpleCurveFitter fitter = SimpleCurveFitter.create(f, parameters).withMaxIterations(100);
 		double[] calculatedParam = fitter.fit(dataObs.toList());
 
 		return calculatedParam[0];
