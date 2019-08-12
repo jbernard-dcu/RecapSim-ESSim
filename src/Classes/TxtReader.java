@@ -7,25 +7,20 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 
 import org.apache.commons.math3.analysis.ParametricUnivariateFunction;
-import org.apache.commons.math3.analysis.differentiation.DerivativeStructure;
-import org.apache.commons.math3.analysis.integration.BaseAbstractUnivariateIntegrator;
-import org.apache.commons.math3.analysis.integration.SimpsonIntegrator;
-import org.apache.commons.math3.fitting.SimpleCurveFitter;
-import org.apache.commons.math3.fitting.WeightedObservedPoints;
-import org.apache.commons.math3.special.Gamma;
-import org.apache.commons.math3.util.FastMath;
+import org.apache.commons.math3.distribution.GammaDistribution;
+import org.apache.commons.math3.distribution.LogNormalDistribution;
 
 import Distribution.GammaFunc;
+import Distribution.LogNormalFunc;
 
+@SuppressWarnings("unused")
 public class TxtReader {
 
 	public static void main(String[] args) throws InterruptedException {
@@ -334,7 +329,15 @@ public class TxtReader {
 						SpecRequest addSpecs = new SpecRequest(getWord(line, start, "]"));
 						String addType = addSpecs.getType();
 						int nbOps = addSpecs.getOpCount();
-						double addLatency = addSpecs.getAvgLatency();
+						double avg = addSpecs.getAvgLatency();
+
+						GammaFunc f = new GammaFunc(avg);
+						//LogNormalFunc f = new LogNormalFunc(avg);
+						double param = addSpecs.estimateParameter(f, addSpecs.getPercentile(90), 10);
+
+						GammaDistribution dist = new GammaDistribution(param, param / avg);
+						//LogNormalDistribution dist = new LogNormalDistribution(Math.log(avg) - Math.pow(param, 2) / 2,
+							//	param);
 
 						/*
 						 * The processing time rises fast with the number of requests, we don't need 2
@@ -343,13 +346,30 @@ public class TxtReader {
 						 */
 						nbOps /= 100;
 
+						double totalLatency = 0;
+						int countLatency = 0;
+
 						if (requestTypes.contains(addType)) {
+							
+							System.out.println("-----------------------------------");
+							System.out.println("AVERAGE:" + avg);
+							
 							for (int op = 0; op < nbOps; op++) {
 								validRequest.get(0).add(addDate + (long) (duration * op / nbOps));
 								validRequest.get(1).add(addType);
-								validRequest.get(2).add(addLatency);
+
+								double addLatency = dist.sample();
+								validRequest.get(2).add(dist.sample());
+								totalLatency += addLatency;
+								countLatency += 1;
+								
+								System.out.println("Latency:"+addLatency);
 							}
+							
+							System.out.println("calculated avg="+totalLatency/countLatency);
+							Thread.sleep(100);
 						}
+						
 					}
 
 					previousDate = addDate;

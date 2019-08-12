@@ -1,11 +1,14 @@
 package Classes;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.apache.commons.math3.analysis.ParametricUnivariateFunction;
 import org.apache.commons.math3.fitting.SimpleCurveFitter;
 import org.apache.commons.math3.fitting.WeightedObservedPoints;
+
+import Distribution.*;
 
 /***
  * Class modeling the specifications of a request, as given in the workload data
@@ -23,6 +26,21 @@ public class SpecRequest {
 	private double q999;
 	private double q9999;
 
+	public static void main(String[] args) {
+
+		String init = "INSERT: Count=3938, Max=595967, Min=4680, Avg=38746.84, 90=71679, 99=241791, 99.9=544767, 99.99=595967";
+		SpecRequest specs = new SpecRequest(init);
+
+		double startValue = 5;
+
+		// GammaFunc f = new GammaFunc(specs.getAvgLatency());
+		LogNormalFunc f = new LogNormalFunc(specs.getAvgLatency());
+
+		System.out.println(specs.fitParameter(f, startValue));
+		System.out.println("vdnclknfd:" + specs.estimateParameter(f, new double[] { 0.9, specs.q90 }, 5));
+
+	}
+
 	public SpecRequest(String init) {
 		this.type = TxtReader.getWord(init, 0, ": ");
 		this.countOp = Integer.parseInt(TxtReader.getWord(init, init.indexOf("Count=") + 6, ", "));
@@ -36,19 +54,34 @@ public class SpecRequest {
 	}
 
 	/**
-	 * Returns a fitted alpha parameter for the gamma distribution fit. We assume
-	 * that the parameter beta is linearly correlated to alpha since we already know
-	 * the mean of our distribution
+	 * Estimates the parameter based on one of the percentiles, the precision is the
+	 * number of digits for the parameter
+	 */
+	public double estimateParameter(ParametricUnivariateFunction f, double[] percentile, int nbDigits) {
+		double step = Math.pow(10, -nbDigits);
+		double proba = percentile[0];
+		double value = percentile[1];
+
+		double[] param = { step };
+
+		while (f.value(value, param) - proba >= 1E-17) {
+			param[0] += step;
+		}
+
+		return param[0];
+	}
+
+	/**
+	 * Returns a fitted alpha parameter for specified CDF in parameter. We assume
+	 * that we're losing one degree of freedom since we already know the mean of our
+	 * distribution
 	 */
 	public double fitParameter(ParametricUnivariateFunction f, double startValue) {
 		WeightedObservedPoints dataObs = new WeightedObservedPoints();
-
-		double div = 1E3;
-
-		dataObs.add(this.q90 / div, 0.9);
-		dataObs.add(this.q99 / div, 0.99);
-		dataObs.add(this.q999 / div, 0.999);
-		dataObs.add(this.q9999 / div, 0.9999);
+		dataObs.add(this.q90, 0.9);
+		dataObs.add(this.q99, 0.99);
+		dataObs.add(this.q999, 0.999);
+		dataObs.add(this.q9999, 0.9999);
 
 		double[] parameters = new double[] { startValue };
 
@@ -59,16 +92,8 @@ public class SpecRequest {
 	}
 
 	public String toString() {
-		List<Object> list = new ArrayList<Object>();
-		list.add(type);
-		list.add(countOp);
-		list.add(max);
-		list.add(min);
-		list.add(avg);
-		list.add(q90);
-		list.add(q99);
-		list.add(q999);
-		list.add(q9999);
+		List<Object> list = new ArrayList<>();
+		list.addAll(Arrays.asList(type, countOp, max, min, avg, q90, q99, q999, q9999));
 		return list.toString() + "\n";
 	}
 
@@ -82,5 +107,27 @@ public class SpecRequest {
 
 	public int getOpCount() {
 		return this.countOp;
+	}
+
+	public double[] getPercentile(int proba) {
+		double percentile = 0;
+		switch (proba) {
+		case 90:
+			percentile = q90;
+			break;
+		case 99:
+			percentile = q99;
+			break;
+		case 999:
+			percentile = q999;
+			break;
+		case 9999:
+			percentile = q9999;
+			break;
+		default:
+			throw new IllegalArgumentException("proba must be 90, 99, 999 or 9999");
+		}
+
+		return new double[] { proba, percentile };
 	}
 }
