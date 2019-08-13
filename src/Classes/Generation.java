@@ -12,10 +12,11 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeMap;
 
+import org.apache.commons.math3.distribution.EnumeratedDistribution;
 import org.apache.commons.math3.distribution.ExponentialDistribution;
+import org.apache.commons.math3.util.Pair;
 
 import Classes.TxtReader.typeData;
-import Distribution.FreqD;
 import Main.Launcher;
 import eu.recap.sim.models.ApplicationModel.Application;
 import eu.recap.sim.models.ApplicationModel.ApplicationLandscape;
@@ -38,8 +39,9 @@ import eu.recap.sim.models.WorkloadModel.Workload;
 
 /**
  * This class holds useful methods to generate the objects necessary for the
- * modelisation</br>
+ * modelisation
  */
+@SuppressWarnings("unused")
 public final class Generation {
 
 	static int timeUnits = 1000;
@@ -155,34 +157,27 @@ public final class Generation {
 	 * Returns a list of Documents with the specified termDist TODO optimize and
 	 * more realistic model for file characteristics
 	 */
-	public static List<Document> GenerateDatabase(TreeMap<Long, Double> termDist, int NB_DOCS, double AVG_NWDOC,
+	public static List<Document> GenerateDatabase(List<Pair<Long, Double>> termDist, int NB_DOCS, double AVG_NWDOC,
 			double STD_NWDOC) {
 		long startTime = System.currentTimeMillis();
 
-		/*
-		 * Generate list of documents stored on the database
-		 */
 		// Generating random length and size
 		long maxSize = 1_000_000_000; // bytes
 
 		// Generating distribution of words
-		FreqD<Long> wordDist = new FreqD<Long>(termDist);
+		EnumeratedDistribution<Long> wordDist = new EnumeratedDistribution<Long>(termDist);
 
 		List<Document> database = new ArrayList<Document>();
 		int nbWord;
 		List<Long> docContent;
 		for (int doc = 0; doc < NB_DOCS; doc++) {
-
+			
 			// adding content in the document
 			nbWord = Launcher.randGint(AVG_NWDOC, STD_NWDOC);
-			docContent = new ArrayList<Long>();
-			for (int word = 0; word < nbWord; word++) {
-				docContent.add(wordDist.sample());
-			}
-
+			docContent = Arrays.asList(wordDist.sample(nbWord, new Long[] {}));
+			
 			// adding new document to data
 			database.add(new Document(docContent, (long) maxSize / (doc + 1), doc));
-
 		}
 
 		System.out.println("Database generated:" + (System.currentTimeMillis() - startTime) + "ms");
@@ -195,7 +190,7 @@ public final class Generation {
 	 * distributions</br>
 	 * Change (for now) this method to change workload distributions
 	 */
-	public static Workload GenerateSyntheticWorkload(TreeMap<Long, Double> termDist, int NB_TERMSET, int NB_REQUEST,
+	public static Workload GenerateSyntheticWorkload(List<Pair<Long, Double>> termDist, int NB_TERMSET, int NB_REQUEST,
 			ApplicationLandscape appLandscape, List<Shard> shardBase) {
 
 		long startTime = System.currentTimeMillis();
@@ -338,7 +333,7 @@ public final class Generation {
 		long startTime = System.currentTimeMillis();
 
 		// Reading input file
-		List<List<Object>> validRequest = TxtReader.mergeWorkloads2();
+		List<List<Object>> validRequest = TxtReader.mergeWorkloads();
 
 		// reducing the requestSet if necessary
 		if (nbRequest > 0 && start >= 0 && start + nbRequest <= validRequest.get(0).size()) {
@@ -359,8 +354,13 @@ public final class Generation {
 		for (int nodeId = 1; nodeId <= numberNodes; nodeId++) {
 			nodeIds.add(nodeId);
 		}
-		FreqD<Integer> nodeDist = new FreqD<Integer>(nodeIds, TxtReader.calculateRepartNodes(numberNodes, typeRepart));
-
+		Double[] repartNodes = TxtReader.calculateRepartNodes(numberNodes, typeRepart);
+		List<Pair<Integer,Double>> listValues = new ArrayList<>();
+		for(int nodeId:nodeIds) {
+			listValues.add(new Pair<Integer,Double>(nodeId,repartNodes[nodeId-1]));
+		}
+		EnumeratedDistribution<Integer> nodeDist = new EnumeratedDistribution<Integer>(listValues);
+		
 		// Getting starting time of the requests
 		long dateInitialRequest = (Long) validRequest.get(0).get(0);
 

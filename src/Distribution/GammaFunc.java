@@ -31,7 +31,7 @@ public class GammaFunc implements ParametricUnivariateFunction {
 	public double[] gradient(double x, double... parameters) {
 		double alpha = parameters[0];
 
-		double zero = 1E-323;
+		double zero = Double.MIN_VALUE;
 
 		/*
 		 * F(x,alpha) = C(alpha)*I(x,alpha)
@@ -58,6 +58,7 @@ public class GammaFunc implements ParametricUnivariateFunction {
 
 		double integrale = ((upperBound - lowerBound) / 6.)
 				* (f.value(lowerBound) + f.value(upperBound) + 4 * f.value((lowerBound + upperBound) / 2.));
+		
 		System.out.println("function:" + i + " value:" + integrale + "\n");
 		return integrale;
 	}

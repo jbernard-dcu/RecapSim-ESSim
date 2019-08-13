@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.apache.commons.math3.analysis.ParametricUnivariateFunction;
+import org.apache.commons.math3.analysis.solvers.SecantSolver;
 import org.apache.commons.math3.fitting.SimpleCurveFitter;
 import org.apache.commons.math3.fitting.WeightedObservedPoints;
 
@@ -36,8 +37,8 @@ public class SpecRequest {
 		// GammaFunc f = new GammaFunc(specs.getAvgLatency());
 		LogNormalFunc f = new LogNormalFunc(specs.getAvgLatency());
 
-		System.out.println(specs.fitParameter(f, startValue));
-		System.out.println("vdnclknfd:" + specs.estimateParameter(f, new double[] { 0.9, specs.q90 }, 5));
+		System.out.println("fit:" + specs.fitParameter(f, startValue));
+		System.out.println("estimate:" + specs.estimateParameter(f, new double[] { 0.999, specs.q999 }, 1E-4));
 
 	}
 
@@ -54,21 +55,22 @@ public class SpecRequest {
 	}
 
 	/**
-	 * Estimates the parameter based on one of the percentiles, the precision is the
-	 * number of digits for the parameter
+	 * Estimates the parameter based on one of the percentiles
 	 */
-	public double estimateParameter(ParametricUnivariateFunction f, double[] percentile, int nbDigits) {
-		double step = Math.pow(10, -nbDigits);
+	public double estimateParameter(ParametricUnivariateFunction f, double[] percentile, double precision) {
+
 		double proba = percentile[0];
 		double value = percentile[1];
 
-		double[] param = { step };
+		double[] param = { 0 };
 
-		while (f.value(value, param) - proba >= 1E-17) {
-			param[0] += step;
+		while (Math.abs(f.value(value, param) - proba) >= precision) {
+			System.out.println("value="+f.value(value, param));
+			System.out.println("param="+param[0]+"\n");
+			param[0] += precision;
 		}
-
-		return param[0];
+		
+		return Math.round(param[0]*Math.pow(10, -Math.log10(precision)))*precision;
 	}
 
 	/**
