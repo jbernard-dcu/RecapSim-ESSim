@@ -330,7 +330,7 @@ public class TxtReader {
 						double avg = addSpecs.getAvgLatency();
 
 						LogNormalFunc f = new LogNormalFunc(avg); // */GammaFunc f = new GammaFunc(avg);
-						double param = addSpecs.estimateParameter(f, addSpecs.getPercentile(99), 1E-4);
+						double param = addSpecs.estimateParameter(f, addSpecs.getPercentile(0.99), 1E-4);
 						System.out.println("param=" + param);
 
 						// double param = addSpecs.fitParameter(f, 5.);

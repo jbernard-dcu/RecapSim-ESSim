@@ -5,14 +5,14 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.apache.commons.math3.analysis.ParametricUnivariateFunction;
-import org.apache.commons.math3.analysis.solvers.SecantSolver;
 import org.apache.commons.math3.fitting.SimpleCurveFitter;
 import org.apache.commons.math3.fitting.WeightedObservedPoints;
 
 import Distribution.*;
 
 /***
- * Class modeling the specifications of a request, as given in the workload data
+ * Class modeling the specifications of a request, as given in the workload
+ * data.
  * 
  * @author Joseph
  */
@@ -42,6 +42,12 @@ public class SpecRequest {
 
 	}
 
+	/**
+	 * The <code>String</code> init should be of the following format for this
+	 * constructor : </br>
+	 * <code>"INSERT: Count=3938, Max=595967, Min=4680, Avg=38746.84, 90=71679, 99=241791, 99.9=544767, 99.99=595967"</code></br>
+	 * The fields are automatically recognized and filled from this String
+	 */
 	public SpecRequest(String init) {
 		this.type = TxtReader.getWord(init, 0, ": ");
 		this.countOp = Integer.parseInt(TxtReader.getWord(init, init.indexOf("Count=") + 6, ", "));
@@ -65,12 +71,11 @@ public class SpecRequest {
 		double[] param = { 0 };
 
 		while (Math.abs(f.value(value, param) - proba) >= precision) {
-			System.out.println("value="+f.value(value, param));
-			System.out.println("param="+param[0]+"\n");
+			System.out.println("param=" + param[0] + "\n");
 			param[0] += precision;
 		}
-		
-		return Math.round(param[0]*Math.pow(10, -Math.log10(precision)))*precision;
+
+		return Math.round(param[0] * Math.pow(10, -Math.log10(precision))) * precision;
 	}
 
 	/**
@@ -111,24 +116,13 @@ public class SpecRequest {
 		return this.countOp;
 	}
 
-	public double[] getPercentile(int proba) {
-		double percentile = 0;
-		switch (proba) {
-		case 90:
-			percentile = q90;
-			break;
-		case 99:
-			percentile = q99;
-			break;
-		case 999:
-			percentile = q999;
-			break;
-		case 9999:
-			percentile = q9999;
-			break;
-		default:
-			throw new IllegalArgumentException("proba must be 90, 99, 999 or 9999");
-		}
+	public double[] getPercentile(double proba) throws InterruptedException {
+		double percentile;
+
+		percentile = (proba == 0.9) ? q90
+				: (proba == 0.99) ? q99 : (proba == 0.999) ? q999 : (proba == 0.9999) ? q9999 : 0;
+		if (percentile == 0)
+			throw new IllegalArgumentException("proba must be 0.9, 0.99, 0.999 or 0.9999");
 
 		return new double[] { proba, percentile };
 	}

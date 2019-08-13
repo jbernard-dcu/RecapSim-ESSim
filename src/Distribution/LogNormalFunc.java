@@ -24,8 +24,12 @@ public class LogNormalFunc implements ParametricUnivariateFunction {
 		// we consider that mu is already known for this distribution
 		double sigma = parameters[0];
 		double mu = Math.log(this.avg) - Math.pow(sigma, 2) / 2;
+		
+		double value = .5 * (1 + Erf.erf((Math.log(x) - mu) / (sigma * Math.sqrt(2))));
+		
+		System.out.println("f("+x+")="+value);
 
-		return .5 * (1 + Erf.erf((Math.log(x) - mu) / (sigma * Math.sqrt(2))));
+		return value ;
 	}
 
 	public double[] gradient(double x, double... parameters) {
