@@ -9,7 +9,46 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
-public class OldMethods {
+public final class OldMethods {
+	
+	/**
+	 * Return the join of the two workloads. Values are re-sorted by date</br>
+	 * 0=date(long), 1=type(String), 2=latency(double)
+	 */
+	@SuppressWarnings("unchecked")
+	public static final List<List<Object>> mergeWorkloads2() {
+		List<List<Object>> workloadW = getRequests(9, "W");
+		List<List<Object>> workloadR = getRequests(9, "R");
+
+		List<List<Object>> workloadMerged = new ArrayList<List<Object>>();
+		for (int field = 0; field < 3; field++) {
+			workloadMerged.add(new ArrayList<>());
+		}
+
+		int sizeMerged = workloadR.get(0).size() + workloadW.get(0).size();
+
+		while (workloadMerged.get(0).size() < sizeMerged) {
+
+			long minR = Collections.min((List<Long>) (List<?>) workloadR.get(0));
+			long minW = Collections.min((List<Long>) (List<?>) workloadW.get(0));
+			long min = Math.min(minR, minW);
+
+			List<List<Object>> workloadMin = (min == minR) ? workloadR : workloadW;
+			int indexMin = workloadMin.get(0).indexOf(min);
+
+			for (int field = 0; field < 3; field++) {
+				workloadMerged.get(field).add(workloadMin.get(field).get(indexMin));
+			}
+
+			for (int field = 0; field < 3; field++) {
+				((min == minR) ? workloadR : workloadW).get(field).remove(indexMin);
+			}
+
+		}
+
+		return workloadMerged;
+
+	}
 	
 	/**
 	 * 0=Date, 1=time, 2=nOp, 3=throughput, 4=estTime, 5=specs

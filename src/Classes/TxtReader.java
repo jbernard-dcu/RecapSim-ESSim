@@ -28,10 +28,11 @@ public class TxtReader {
 	public static void main(String[] args) throws InterruptedException {
 		long startTime = System.currentTimeMillis();
 
-		List<List<Object>> aaa = mergeWorkloads();
+		List<List<Object>> aaa = mergeWorkloadsSimple();
 
 		System.out.println("size:" + aaa.get(0).size());
 		System.out.println("time:" + (System.currentTimeMillis() - startTime) / 1000.);
+
 	}
 
 	/**
@@ -327,35 +328,16 @@ public class TxtReader {
 						int nbOps = addSpecs.getOpCount();
 						double avg = addSpecs.getAvgLatency();
 
-						/*
-						 * The processing time rises fast with the number of requests, we don't need 2
-						 * million requests so we only take a proportion TODO : optimisation to compare
-						 * full workloads
-						 */
-						nbOps /= 10;
-
-						double totalLatency = 0;
-
-						double totalLatency2 = 0;
-
 						if (requestTypes.contains(addType)) {
 
 							/*
 							 * Calculating the parameter of the latency distribution
 							 */
-							System.out.println(addSpecs.toString());
-
 							LogNormalFunc f = new LogNormalFunc(avg);
 							double param = addSpecs.estimateParameter(f, addSpecs.getPercentile(0.9), 1E-15);
-							double param2 = addSpecs.fitParameter(f, 5.);
 
 							LogNormalDistribution dist = new LogNormalDistribution(
 									Math.log(avg) - Math.pow(param, 2) / 2., param);
-							LogNormalDistribution dist2 = new LogNormalDistribution(
-									Math.log(avg) - Math.pow(param2, 2) / 2., param2);
-
-							System.out.println("-----------------------------------");
-							System.out.println("AVERAGE:" + avg);
 
 							/*
 							 * Adding requests
@@ -366,14 +348,8 @@ public class TxtReader {
 
 								double addLatency = dist.sample();
 								validRequest.get(2).add(addLatency);
-								totalLatency += addLatency;
-								totalLatency2 += dist2.sample();
 							}
 
-							System.out.println("Moy1=" + totalLatency / nbOps + "  Moy2=" + totalLatency2 / nbOps);
-							System.out.println("Ecart1=" + 100 * Math.abs(totalLatency / nbOps - avg) / avg
-									+ "  Ecart2=" + 100 * Math.abs(totalLatency2 / nbOps - avg) / avg);
-							System.out.println(" on " + nbOps + " operations");
 						}
 
 					}
@@ -393,35 +369,21 @@ public class TxtReader {
 	}
 
 	/**
+	 * Return the join of the two workloads. This method does not consider that
+	 * values should be re-sorted</br>
 	 * 0=date(long), 1=type(String), 2=latency(double)
 	 */
-	@SuppressWarnings("unchecked")
-	public static final List<List<Object>> mergeWorkloads() {
-		List<List<Object>> workloadR = getRequests(9, "R");
+	public static final List<List<Object>> mergeWorkloadsSimple() {
+
 		List<List<Object>> workloadW = getRequests(9, "W");
+		List<List<Object>> workloadR = getRequests(9, "R");
 
 		List<List<Object>> workloadMerged = new ArrayList<List<Object>>();
 		for (int field = 0; field < 3; field++) {
-			workloadMerged.add(new ArrayList<>());
-		}
-
-		int sizeMerged = workloadR.get(0).size() + workloadW.get(0).size();
-
-		while (workloadMerged.get(0).size() < sizeMerged) {
-
-			long minR = Collections.min((List<Long>) (List<?>) workloadR.get(0));
-			long minW = Collections.min((List<Long>) (List<?>) workloadW.get(0));
-			long min = Math.min(minR, minW);
-
-			List<List<Object>> workloadMin = (min == minR) ? workloadR : workloadW;
-			int indexMin = workloadMin.get(0).indexOf(min);
-
-			for (int field = 0; field < 3; field++) {
-				workloadMerged.get(field).add(workloadMin.get(field).get(indexMin));
-			}
-
-			((min == minR) ? workloadR : workloadW).get(0).set(indexMin, Long.MAX_VALUE);
-
+			List<Object> add = new ArrayList<>();
+			add.addAll(workloadW.get(field));
+			add.addAll(workloadR.get(field));
+			workloadMerged.add(add);
 		}
 
 		return workloadMerged;
