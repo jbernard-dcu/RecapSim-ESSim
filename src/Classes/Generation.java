@@ -171,11 +171,11 @@ public final class Generation {
 		int nbWord;
 		List<Long> docContent;
 		for (int doc = 0; doc < NB_DOCS; doc++) {
-			
+
 			// adding content in the document
 			nbWord = Launcher.randGint(AVG_NWDOC, STD_NWDOC);
 			docContent = Arrays.asList(wordDist.sample(nbWord, new Long[] {}));
-			
+
 			// adding new document to data
 			database.add(new Document(docContent, (long) maxSize / (doc + 1), doc));
 		}
@@ -216,7 +216,7 @@ public final class Generation {
 
 		// Creating Exp law
 		double lambda = 10. / NB_REQUEST;
-		ExponentialDistribution exp = new ExponentialDistribution(1./lambda);
+		ExponentialDistribution exp = new ExponentialDistribution(1. / lambda);
 
 		// Filling clientIds list
 		String clientID;
@@ -336,7 +336,8 @@ public final class Generation {
 		List<List<Object>> validRequest = TxtReader.mergeWorkloadsSimple();
 
 		// reducing the requestSet if necessary
-		if (nbRequest > 0 && start >= 0 && start + nbRequest <= validRequest.get(0).size()) {
+		nbRequest = Math.min(nbRequest, validRequest.get(0).size() - start);
+		if (start >= 0) {
 			List<List<Object>> reducedValidRequest = new ArrayList<List<Object>>();
 			for (int field = 0; field < validRequest.size(); field++) {
 				reducedValidRequest.add(new ArrayList<Object>());
@@ -355,12 +356,12 @@ public final class Generation {
 			nodeIds.add(nodeId);
 		}
 		Double[] repartNodes = TxtReader.calculateRepartNodes(numberNodes, typeRepart);
-		List<Pair<Integer,Double>> listValues = new ArrayList<>();
-		for(int nodeId:nodeIds) {
-			listValues.add(new Pair<Integer,Double>(nodeId,repartNodes[nodeId-1]));
+		List<Pair<Integer, Double>> listValues = new ArrayList<>();
+		for (int nodeId : nodeIds) {
+			listValues.add(new Pair<Integer, Double>(nodeId, repartNodes[nodeId - 1]));
 		}
 		EnumeratedDistribution<Integer> nodeDist = new EnumeratedDistribution<Integer>(listValues);
-		
+
 		// Getting starting time of the requests
 		long dateInitialRequest = (Long) validRequest.get(0).get(0);
 
@@ -368,16 +369,17 @@ public final class Generation {
 		final double cpuFrequency = 3E9; // Hz
 		final double msPerCycle = 1_000. / (cpuFrequency);
 
-		final int MULT_CPO = 10;
-		final double MULT_MI = 3;
+		final int MULT_CPO = 1_000_000;
+
+		final Map<String, Double> cyclesType = TxtReader.calculateCyclesType(validRequest);
 
 		// Adding requests to device
 		Device.Builder device = Device.newBuilder();
 		for (int request = 0; request < validRequest.get(0).size(); request++) {
-			
-			long date = (Long) validRequest.get(0).get(request);
+
+			long date = (long) validRequest.get(0).get(request);
 			String type = (String) validRequest.get(1).get(request);
-			double avgLatency = (double) validRequest.get(2).get(request);
+			double latency = (double) validRequest.get(2).get(request);
 
 			Request.Builder requestBuilder = Request.newBuilder();
 
@@ -400,15 +402,19 @@ public final class Generation {
 
 			// TODO calculate expected duration
 			// https://www.d.umn.edu/~gshute/arch/performance-equation.xhtml
-			int cyclesPerOp = (int) (MULT_CPO * TxtReader.calculateCyclesType().get(type));
+			/*int cyclesPerOp = (int) (MULT_CPO * cyclesType.get(type));
 			int opsPerRequest = 1;
-			double processingTime = msPerCycle * cyclesPerOp * opsPerRequest;
-			int expectedDuration = (int) (processingTime + avgLatency / 1_000); // in milliseconds
+			double processingTime = msPerCycle * cyclesPerOp * opsPerRequest;*/
+			int duration = Math.max((int) (/*processingTime + */latency / 1_000), 1); // in milliseconds
+
+			// Exact formula for the time of completion -> determine why this works, is it
+			// the formula used by the simulation ?
+			int expectedDuration = 4 * 100 + 10 * duration;
 			requestBuilder.setExpectedDuration(expectedDuration);
 
 			// TODO calculate MIPS for request
-			int miPerDataNode = (int) (MULT_MI * cpuFrequency * 1E-6 * expectedDuration / 1_000); // duration(s)*freq(Hz)/1E6
-																									// = mi
+			int miPerDataNode = (int) (cpuFrequency * 1E-6 * duration / 1_000); // mi = duration(s)*freq(Hz)/1E6
+
 			requestBuilder.setMipsDataNodes(miPerDataNode * timeUnits);
 
 			device.addRequests(requestBuilder.build());

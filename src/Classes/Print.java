@@ -3,6 +3,8 @@ package Classes;
 import java.util.List;
 import java.util.TreeMap;
 
+import org.apache.commons.math3.util.Pair;
+
 import Main.Launcher;
 import eu.recap.sim.models.WorkloadModel.Device;
 import eu.recap.sim.models.WorkloadModel.Request;
@@ -65,7 +67,7 @@ public class Print {
 	 * Prints the specified workload in a column format</br>
 	 * Request, Time, Device, Score
 	 */
-	public static void printWorkload(Workload workload, TreeMap<Long,Double> termDist, long startTime) {
+	public static void printWorkload(Workload workload, List<Pair<Long, Double>> termDist, long startTime) {
 		String configPrintf = "%32s %1s %8s %1s %6s %1s %17s";
 		System.out.printf(configPrintf, "Request", "|", "Time", "|", "Device", "|", "Score\n");
 		System.out.println("----------------------------------------------------------------------------------");

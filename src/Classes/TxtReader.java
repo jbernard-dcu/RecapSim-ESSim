@@ -40,9 +40,7 @@ public class TxtReader {
 	 * average latency of requests of each type</br>
 	 * These weights can help us calculate MI necessary to execute requests
 	 */
-	public static Map<String, Double> calculateCyclesType() {
-
-		List<List<Object>> requests = TxtReader.mergeWorkloadsSimple();
+	public static Map<String, Double> calculateCyclesType(List<List<Object>> requests) {
 
 		Map<String, Double> tam = new HashMap<String, Double>();
 		Map<String, Integer> sizes = new HashMap<String, Integer>();

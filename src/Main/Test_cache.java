@@ -2,22 +2,21 @@ package Main;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Queue;
 
-import Distribution.FreqD;
+import org.apache.commons.math3.distribution.EnumeratedDistribution;
 
-public class Main_test {
+public class Test_cache {
 
 	public static void main(String[] args) {
-
-		FreqD<Long> dist = new FreqD<Long>(Launcher.ZipfDist(100,1/3.));
+		
+		EnumeratedDistribution<Long> dist = new EnumeratedDistribution<Long>(Launcher.ZipfDist(100,1/3.));
 
 		List<ShardSim> shardBase = new ArrayList<ShardSim>();
 		for (int shard = 0; shard < 9; shard++) {
 			shardBase.add(new ShardSim());
 		}
-
-		FreqD<Long> shardDist = new FreqD<Long>(Launcher.UnifDist(shardBase.size()));
+		
+		EnumeratedDistribution<Long> shardDist = new EnumeratedDistribution<Long>(Launcher.UnifDist(shardBase.size()));
 
 		int c = 0;
 		int nc = 0;
