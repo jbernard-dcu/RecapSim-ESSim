@@ -42,7 +42,7 @@ public class TxtReader {
 	 */
 	public static Map<String, Double> calculateCyclesType() {
 
-		List<List<Object>> requests = TxtReader.mergeWorkloads();
+		List<List<Object>> requests = TxtReader.mergeWorkloadsSimple();
 
 		Map<String, Double> tam = new HashMap<String, Double>();
 		Map<String, Integer> sizes = new HashMap<String, Integer>();

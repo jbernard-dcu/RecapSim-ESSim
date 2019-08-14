@@ -333,7 +333,7 @@ public final class Generation {
 		long startTime = System.currentTimeMillis();
 
 		// Reading input file
-		List<List<Object>> validRequest = TxtReader.mergeWorkloads();
+		List<List<Object>> validRequest = TxtReader.mergeWorkloadsSimple();
 
 		// reducing the requestSet if necessary
 		if (nbRequest > 0 && start >= 0 && start + nbRequest <= validRequest.get(0).size()) {
