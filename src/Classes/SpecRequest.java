@@ -32,13 +32,12 @@ public class SpecRequest {
 		String init = "INSERT: Count=3938, Max=595967, Min=4680, Avg=38746.84, 90=71679, 99=241791, 99.9=544767, 99.99=595967";
 		SpecRequest specs = new SpecRequest(init);
 
-		double startValue = 5;
+		double startValue = 1.;
 
-		// GammaFunc f = new GammaFunc(specs.getAvgLatency());
 		LogNormalFunc f = new LogNormalFunc(specs.getAvgLatency());
 
 		System.out.println("fit:" + specs.fitParameter(f, startValue));
-		System.out.println("estimate:" + specs.estimateParameter(f, new double[] { 0.999, specs.q999 }, 1E-4));
+		System.out.println("estimate:" + specs.estimateParameter(f, specs.getPercentile(0.9), 1E-17));
 
 	}
 
@@ -63,19 +62,30 @@ public class SpecRequest {
 	/**
 	 * Estimates the parameter based on one of the percentiles
 	 */
-	public double estimateParameter(ParametricUnivariateFunction f, double[] percentile, double precision) {
+	public double estimateParameter(ParametricUnivariateFunction f, double[] point, double precision) {
 
-		double proba = percentile[0];
-		double value = percentile[1];
+		double proba = point[0];
+		double percentile = point[1];
 
-		double[] param = { 0 };
+		double param = 0;
 
-		while (Math.abs(f.value(value, param) - proba) >= precision) {
-			System.out.println("param=" + param[0] + "\n");
-			param[0] += precision;
+		// We suppose from previous fits that the parameter should be between 1 and 2
+		double[] x = new double[] { 1, 2 };
+		double[] fx = new double[2];
+
+		while (Math.abs(f.value(percentile, param) - proba) >= precision) {
+
+			fx[0] = f.value(percentile, x[0]) - proba;
+			fx[1] = f.value(percentile, x[1]) - proba;
+
+			param = (fx[1] * x[0] - fx[0] * x[1]) / (fx[1] - fx[0]);
+
+			x[0] = x[1];
+			x[1] = param;
 		}
 
-		return Math.round(param[0] * Math.pow(10, -Math.log10(precision))) * precision;
+		return param;
+
 	}
 
 	/**
@@ -92,7 +102,7 @@ public class SpecRequest {
 
 		double[] parameters = new double[] { startValue };
 
-		SimpleCurveFitter fitter = SimpleCurveFitter.create(f, parameters).withMaxIterations(100);
+		SimpleCurveFitter fitter = SimpleCurveFitter.create(f, parameters);
 		double[] calculatedParam = fitter.fit(dataObs.toList());
 
 		return calculatedParam[0];
@@ -101,7 +111,7 @@ public class SpecRequest {
 	public String toString() {
 		List<Object> list = new ArrayList<>();
 		list.addAll(Arrays.asList(type, countOp, max, min, avg, q90, q99, q999, q9999));
-		return list.toString() + "\n";
+		return list.toString();
 	}
 
 	public String getType() {
@@ -116,7 +126,7 @@ public class SpecRequest {
 		return this.countOp;
 	}
 
-	public double[] getPercentile(double proba) throws InterruptedException {
+	public double[] getPercentile(double proba) {
 		double percentile;
 
 		percentile = (proba == 0.9) ? q90

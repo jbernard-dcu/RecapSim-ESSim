@@ -291,8 +291,6 @@ public class TxtReader {
 			validRequest.add(new ArrayList<Object>());
 		}
 
-		final double MULT_PARAM = 1;
-
 		try {
 			File file = new File(System.getProperty("user.dir") + File.separator + path + File.separator + fileName);
 
@@ -329,31 +327,39 @@ public class TxtReader {
 						int nbOps = addSpecs.getOpCount();
 						double avg = addSpecs.getAvgLatency();
 
-						LogNormalFunc f = new LogNormalFunc(avg); // */GammaFunc f = new GammaFunc(avg);
-						double param = addSpecs.estimateParameter(f, addSpecs.getPercentile(0.99), 1E-4);
-						System.out.println("param=" + param);
-
-						// double param = addSpecs.fitParameter(f, 5.);
-
-						// GammaDistribution dist = new GammaDistribution(param, param / avg);
-						LogNormalDistribution dist = new LogNormalDistribution(Math.log(avg) - Math.pow(param, 2) / 2.,
-								param * MULT_PARAM);
-
 						/*
 						 * The processing time rises fast with the number of requests, we don't need 2
 						 * million requests so we only take a proportion TODO : optimisation to compare
 						 * full workloads
 						 */
-						nbOps /= 100;
+						nbOps /= 10;
 
 						double totalLatency = 0;
-						int countLatency = 0;
+
+						double totalLatency2 = 0;
 
 						if (requestTypes.contains(addType)) {
+
+							/*
+							 * Calculating the parameter of the latency distribution
+							 */
+							System.out.println(addSpecs.toString());
+
+							LogNormalFunc f = new LogNormalFunc(avg);
+							double param = addSpecs.estimateParameter(f, addSpecs.getPercentile(0.9), 1E-15);
+							double param2 = addSpecs.fitParameter(f, 5.);
+
+							LogNormalDistribution dist = new LogNormalDistribution(
+									Math.log(avg) - Math.pow(param, 2) / 2., param);
+							LogNormalDistribution dist2 = new LogNormalDistribution(
+									Math.log(avg) - Math.pow(param2, 2) / 2., param2);
 
 							System.out.println("-----------------------------------");
 							System.out.println("AVERAGE:" + avg);
 
+							/*
+							 * Adding requests
+							 */
 							for (int op = 0; op < nbOps; op++) {
 								validRequest.get(0).add(addDate + (long) (duration * op / nbOps));
 								validRequest.get(1).add(addType);
@@ -361,12 +367,13 @@ public class TxtReader {
 								double addLatency = dist.sample();
 								validRequest.get(2).add(addLatency);
 								totalLatency += addLatency;
-								countLatency += 1;
-
-								System.out.println("Latency:" + addLatency);
+								totalLatency2 += dist2.sample();
 							}
 
-							System.out.println("calculated avg=" + totalLatency / countLatency);
+							System.out.println("Moy1=" + totalLatency / nbOps + "  Moy2=" + totalLatency2 / nbOps);
+							System.out.println("Ecart1=" + 100 * Math.abs(totalLatency / nbOps - avg) / avg
+									+ "  Ecart2=" + 100 * Math.abs(totalLatency2 / nbOps - avg) / avg);
+							System.out.println(" on " + nbOps + " operations");
 						}
 
 					}
