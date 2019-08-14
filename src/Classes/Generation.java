@@ -18,6 +18,7 @@ import org.apache.commons.math3.util.Pair;
 
 import Classes.TxtReader.typeData;
 import Main.Launcher;
+import eu.recap.sim.RecapSim;
 import eu.recap.sim.models.ApplicationModel.Application;
 import eu.recap.sim.models.ApplicationModel.ApplicationLandscape;
 import eu.recap.sim.models.ApplicationModel.Deployment;
@@ -368,6 +369,9 @@ public final class Generation {
 		// Clock parameters
 		final double cpuFrequency = 3E9; // Hz
 		final double msPerCycle = 1_000. / (cpuFrequency);
+		
+		// UtilizatioModel parameters
+		RecapSim.setUmCpuValue(300);
 
 		final int MULT_CPO = 1_000_000;
 
@@ -402,14 +406,18 @@ public final class Generation {
 
 			// TODO calculate expected duration
 			// https://www.d.umn.edu/~gshute/arch/performance-equation.xhtml
-			/*int cyclesPerOp = (int) (MULT_CPO * cyclesType.get(type));
-			int opsPerRequest = 1;
-			double processingTime = msPerCycle * cyclesPerOp * opsPerRequest;*/
-			int duration = Math.max((int) (/*processingTime + */latency / 1_000), 1); // in milliseconds
+			/*
+			 * int cyclesPerOp = (int) (MULT_CPO * cyclesType.get(type)); int opsPerRequest
+			 * = 1; double processingTime = msPerCycle * cyclesPerOp * opsPerRequest;
+			 */
+			int duration = Math.max((int) (/* processingTime + */latency / 1_000), 1); // in milliseconds
 
 			// Exact formula for the time of completion -> determine why this works, is it
 			// the formula used by the simulation ?
-			int expectedDuration = 4 * 100 + 10 * duration;
+			int umCpuValue = RecapSim.getUmCpuValue(); // the value specified in RecapSim for the quantity of CPU usable
+														// by each cloudlet
+			int expectedDuration = 4 * (int) (cpuFrequency * 10 * 1E-6 / umCpuValue)
+					+ (int) (cpuFrequency * 1E-6 / umCpuValue) * duration;
 			requestBuilder.setExpectedDuration(expectedDuration);
 
 			// TODO calculate MIPS for request

@@ -53,6 +53,7 @@ public final class OldMethods {
 	/**
 	 * 0=Date, 1=time, 2=nOp, 3=throughput, 4=estTime, 5=specs
 	 */
+	@SuppressWarnings("deprecation")
 	public static List<List<Object>> getRequests(int numberNodes, String pick) {
 		String path = "/elasticsearch_nodes-" + numberNodes + "_replication-3/nodes-" + numberNodes
 				+ "_replication-3/evaluation_run_2018_11_25-";
@@ -158,6 +159,7 @@ public final class OldMethods {
 	 * Merges the workloads of load and transaction for the 9 nodes case, also sorts
 	 * all operations according to their date
 	 */
+	@SuppressWarnings("unchecked")
 	public final static List<List<Object>> mergeWorkloads() {
 		/*
 		 * Sorting requests from both workloads
