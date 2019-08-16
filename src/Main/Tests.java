@@ -17,11 +17,11 @@ import java.util.List;
 
 public class Tests {
 
-	public static TreeMap<Double, List<Double>> ramSimu;
-	public static TreeMap<Double, List<Double>> ramReal;
+	static TreeMap<Double, List<Double>> ramSimu;
+	static TreeMap<Double, List<Double>> ramReal;
 
-	public static TreeMap<Double, List<Double>> cpuSimu;
-	public static TreeMap<Double, List<Double>> cpuReal;
+	static TreeMap<Double, List<Double>> cpuSimu;
+	static TreeMap<Double, List<Double>> cpuReal;
 
 	public static void main(String[] args) throws FileNotFoundException, InterruptedException {
 

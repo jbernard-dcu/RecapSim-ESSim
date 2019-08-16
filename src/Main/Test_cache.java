@@ -8,14 +8,14 @@ import org.apache.commons.math3.distribution.EnumeratedDistribution;
 public class Test_cache {
 
 	public static void main(String[] args) {
-		
-		EnumeratedDistribution<Long> dist = new EnumeratedDistribution<Long>(Launcher.ZipfDist(100,1/3.));
+
+		EnumeratedDistribution<Long> dist = new EnumeratedDistribution<Long>(Launcher.ZipfDist(100, 1 / 3.));
 
 		List<ShardSim> shardBase = new ArrayList<ShardSim>();
 		for (int shard = 0; shard < 9; shard++) {
 			shardBase.add(new ShardSim());
 		}
-		
+
 		EnumeratedDistribution<Long> shardDist = new EnumeratedDistribution<Long>(Launcher.UnifDist(shardBase.size()));
 
 		int c = 0;
@@ -23,7 +23,7 @@ public class Test_cache {
 
 		for (int i = 0; i < 1_000; i++) {
 			List<ShardSim> shardsR = new ArrayList<ShardSim>();
-			int nbShards = 3/*Launcher.randGint(shardBase.size() / 2., shardBase.size() / 6.)*/;
+			int nbShards = 3/* Launcher.randGint(shardBase.size() / 2., shardBase.size() / 6.) */;
 			for (int v = 0; v < nbShards; v++) {
 				shardsR.add(shardBase.get(shardDist.sample().intValue()));
 			}
@@ -41,7 +41,7 @@ public class Test_cache {
 
 		}
 
-		System.out.println((double)c/(c+nc));
+		System.out.println((double) c / (c + nc));
 
 	}
 

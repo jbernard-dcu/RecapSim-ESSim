@@ -16,6 +16,7 @@ public final class OldMethods {
 	 * 0=date(long), 1=type(String), 2=latency(double)
 	 */
 	@SuppressWarnings("unchecked")
+	@Deprecated
 	public static final List<List<Object>> mergeWorkloads2() {
 		List<List<Object>> workloadW = getRequests(9, "W");
 		List<List<Object>> workloadR = getRequests(9, "R");
@@ -53,7 +54,7 @@ public final class OldMethods {
 	/**
 	 * 0=Date, 1=time, 2=nOp, 3=throughput, 4=estTime, 5=specs
 	 */
-	@SuppressWarnings("deprecation")
+	@Deprecated
 	public static List<List<Object>> getRequests(int numberNodes, String pick) {
 		String path = "/elasticsearch_nodes-" + numberNodes + "_replication-3/nodes-" + numberNodes
 				+ "_replication-3/evaluation_run_2018_11_25-";
@@ -160,6 +161,7 @@ public final class OldMethods {
 	 * all operations according to their date
 	 */
 	@SuppressWarnings("unchecked")
+	@Deprecated
 	public final static List<List<Object>> mergeWorkloads() {
 		/*
 		 * Sorting requests from both workloads

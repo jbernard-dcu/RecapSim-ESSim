@@ -341,7 +341,7 @@ public final class Generation {
 		if (start >= 0) {
 			List<List<Object>> reducedValidRequest = new ArrayList<List<Object>>();
 			for (int field = 0; field < validRequest.size(); field++) {
-				reducedValidRequest.add(new ArrayList<Object>());
+				reducedValidRequest.add(new ArrayList<>());
 			}
 			for (int time = start; time < start + nbRequest; time++) {
 				for (int field = 0; field < validRequest.size(); field++) {
@@ -364,18 +364,16 @@ public final class Generation {
 		EnumeratedDistribution<Integer> nodeDist = new EnumeratedDistribution<Integer>(listValues);
 
 		// Getting starting time of the requests
-		long dateInitialRequest = (Long) validRequest.get(0).get(0);
+		long dateInitialRequest = (long) validRequest.get(0).get(0);
 
 		// Clock parameters
 		final double cpuFrequency = 3E9; // Hz
 		final double msPerCycle = 1_000. / (cpuFrequency);
-		
-		// UtilizatioModel parameters
-		RecapSim.setUmCpuValue(300);
-
 		final int MULT_CPO = 1_000_000;
-
 		final Map<String, Double> cyclesType = TxtReader.calculateCyclesType(validRequest);
+
+		// UtilizationModel parameters
+		RecapSim.setUmCpuValue(300);
 
 		// Adding requests to device
 		Device.Builder device = Device.newBuilder();
@@ -404,25 +402,21 @@ public final class Generation {
 			// TODO calculate data to transfer
 			requestBuilder.setDataToTransfer(1);
 
-			// TODO calculate expected duration
-			// https://www.d.umn.edu/~gshute/arch/performance-equation.xhtml
 			/*
-			 * int cyclesPerOp = (int) (MULT_CPO * cyclesType.get(type)); int opsPerRequest
-			 * = 1; double processingTime = msPerCycle * cyclesPerOp * opsPerRequest;
+			 * Performance equation :
+			 * https://www.d.umn.edu/~gshute/arch/performance-equation.xhtml
+			 * int cyclesPerOp = (int) (MULT_CPO * cyclesType.get(type));
+			 * int opsPerRequest = 1;
+			 * double processingTime = msPerCycle * cyclesPerOp * opsPerRequest;
+			 * int umCpuValue = RecapSim.getUmCpuValue();
+			 * int expectedDuration = 4 * (int) (cpuFrequency * 10 * 1E-6 / umCpuValue) +
+			 * (int) (cpuFrequency * 1E-6 / umCpuValue) * duration;
 			 */
-			int duration = Math.max((int) (/* processingTime + */latency / 1_000), 1); // in milliseconds
+			requestBuilder.setExpectedDuration(1);
 
-			// Exact formula for the time of completion -> determine why this works, is it
-			// the formula used by the simulation ?
-			int umCpuValue = RecapSim.getUmCpuValue(); // the value specified in RecapSim for the quantity of CPU usable
-														// by each cloudlet
-			int expectedDuration = 4 * (int) (cpuFrequency * 10 * 1E-6 / umCpuValue)
-					+ (int) (cpuFrequency * 1E-6 / umCpuValue) * duration;
-			requestBuilder.setExpectedDuration(expectedDuration);
-
-			// TODO calculate MIPS for request
-			int miPerDataNode = (int) (cpuFrequency * 1E-6 * duration / 1_000); // mi = duration(s)*freq(Hz)/1E6
-
+			// MI = duration(s)*freq(Hz)/1E6
+			int duration = Math.max((int) (latency / 1_000), 1);
+			int miPerDataNode = (int) (cpuFrequency * 1E-6 * duration / 1_000);
 			requestBuilder.setMipsDataNodes(miPerDataNode * timeUnits);
 
 			device.addRequests(requestBuilder.build());

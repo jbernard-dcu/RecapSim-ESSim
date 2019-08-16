@@ -14,6 +14,7 @@ import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 import org.apache.commons.math3.analysis.ParametricUnivariateFunction;
 import org.apache.commons.math3.distribution.GammaDistribution;
@@ -21,17 +22,12 @@ import org.apache.commons.math3.distribution.LogNormalDistribution;
 
 import Distribution.GammaFunc;
 import Distribution.LogNormalFunc;
+import Main.Launcher;
 
 @SuppressWarnings("unused")
 public class TxtReader {
 
 	public static void main(String[] args) throws InterruptedException {
-		long startTime = System.currentTimeMillis();
-
-		List<List<Object>> aaa = mergeWorkloadsSimple();
-
-		System.out.println("size:" + aaa.get(0).size());
-		System.out.println("time:" + (System.currentTimeMillis() - startTime) / 1000.);
 
 	}
 
@@ -198,6 +194,12 @@ public class TxtReader {
 
 	}
 
+	/**
+	 * Returns the contents of the specified monitoring file</br>
+	 * 0=relative timestamp (double), 1=absolute timestamp(Date), 2=value (double)
+	 * 
+	 * @param numberNodes 3 or 9
+	 */
 	public static List<List<Object>> readMonitoring(int numberNodes, typeData type, int vm) {
 		String path = "/elasticsearch_nodes-" + numberNodes + "_replication-3/nodes-" + numberNodes
 				+ "_replication-3/evaluation_run_2018_11_25-";
@@ -245,10 +247,13 @@ public class TxtReader {
 			}
 
 			while ((line = bufferedReader.readLine()) != null) {
-				columns.get(0).add(Double.parseDouble(getWord(line, 0, ",")));
-				columns.get(1).add(readTimeMonitoring(getWord(line, line.indexOf(",") + 1, ",")));
-				columns.get(2)
-						.add(Double.parseDouble(getWord(line, line.indexOf(",", line.indexOf(",") + 1) + 1, ",")));
+				double addRelTime = Double.parseDouble(getWord(line, 0, ","));
+				Date addAbsTime = readTimeMonitoring(getWord(line, line.indexOf(",") + 1, ","));
+				double addValue = Double.parseDouble(getWord(line, line.indexOf(",", line.indexOf(",") + 1) + 1, ","));
+
+				columns.get(0).add(addRelTime);
+				columns.get(1).add(addAbsTime);
+				columns.get(2).add(addValue);
 			}
 
 			bufferedReader.close();
