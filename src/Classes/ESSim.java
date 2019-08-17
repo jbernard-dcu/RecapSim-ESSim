@@ -24,11 +24,9 @@ import eu.recap.sim.models.WorkloadModel.Request;
 public class ESSim extends RecapSim {
 
 	public static void main(String[] args) {
-
-	}
-
-	public ESSim() {
-		super();
+		int a=10;
+		
+		System.out.println(a);
 	}
 
 	@Override

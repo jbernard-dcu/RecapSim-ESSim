@@ -79,6 +79,20 @@ public final class Generation {
 	static final int bw = 10_000; // 10Gbit/s
 
 	/* Apis */
+
+	// new values for new network topology
+	// resource consumption from client to datanode
+	static int clientToDN_mips = 300 * timeUnits / 10;
+	static int clientToDN_iops = 1;
+	static int clientToDN_ram = 200;// 500
+	static int clientToDN_transferData = 1 * timeUnits;
+
+	// resource consumption from datanode to datanode
+	static int DNToDN_mips = 300 * timeUnits / 10;
+	static int DNToDN_iops = 1;
+	static int DNToDN_ram = 200;// 1000
+	static int DNToDN_transferData = 1 * timeUnits;
+
 	// resource consumption going from client to web server
 	static int clientToWebServer_mips = 300 * timeUnits / 10;
 	static int clientToWebServer_iops = 1;
@@ -433,6 +447,53 @@ public final class Generation {
 
 	}
 
+	public static ApplicationLandscape GenerateAppLandscape2(int appQty, int NB_PRIMARYSHARDS,
+			Infrastructure infrastructure) {
+
+		long startTime = System.currentTimeMillis();
+
+		ApplicationLandscape.Builder appLandscapeBuilder = ApplicationLandscape.newBuilder();
+		appLandscapeBuilder.setNotes("Network application landscape");
+
+		// List of available nodes
+		List<String> nodeIds = new ArrayList<String>();
+		for (ResourceSite site : infrastructure.getSitesList()) {
+			for (Node node : site.getNodesList()) {
+				nodeIds.add(node.getId());
+			}
+		}
+		int indexNmberOfNodes = nodeIds.size() - 1;
+
+		int nodesCounter = 0;
+
+		for (int appCounter = 0; appCounter < appQty; appCounter++) {
+
+			// New Application builder
+			Application.Builder appBuilder = Application.newBuilder();
+			appBuilder.setApplicationId("" + appCounter).setApplicationName("" + appCounter);
+
+			// Creating, deploying and building shards
+			// "shards" go from 1 to NB_PRIMARYSHARDS. shard is the component id in fact
+			// We do not consider replication for now
+			for (int componentId = 1; componentId <= NB_PRIMARYSHARDS; componentId++) {
+
+				Component.Builder componentBuilder = createComponent("Shard_" + componentId, "" + componentId,
+						nodeIds.get(nodesCounter), nodeIds.size());
+
+				nodesCounter = (nodesCounter == indexNmberOfNodes) ? 0 : nodesCounter + 1;
+
+				appBuilder.addComponents(componentBuilder.build());
+			}
+
+			appLandscapeBuilder.addApplications(appBuilder.build());
+
+		}
+
+		System.out.println("ApplicationLandscape generated:" + (System.currentTimeMillis() - startTime) + "ms");
+
+		return appLandscapeBuilder.build();
+	}
+
 	/**
 	 * Method to generate a general ApplicationLandscape, based on
 	 * LinknovateValidarionRAM.GenerateLinknovateValidationApplication (@author
@@ -457,13 +518,11 @@ public final class Generation {
 
 		int nodesCounter = 0;
 		for (int appCounter = 0; appCounter < appQty; appCounter++) {
-			/*
-			 * New application builder
-			 */
+
+			// New application builder
 			Application.Builder appBuilder = Application.newBuilder();
 			appBuilder.setApplicationId("" + appCounter).setApplicationName("" + appCounter);
 
-			/**/
 			// Component for WS
 			Component.Builder webServerBuilder = Component.newBuilder();
 			webServerBuilder.setComponentName("Web server").setComponentId("1").setIsLoadbalanced(false);
@@ -711,6 +770,61 @@ public final class Generation {
 			res[site] = columnRes;
 		}
 		return res;
+	}
+
+	public static Component.Builder createComponent(String componentName, String componentId, String nodeId,
+			int nbShards) {
+		Component.Builder shard = Component.newBuilder();
+		shard.setComponentName(componentName);
+		shard.setComponentId(componentId);
+		shard.setIsLoadbalanced(false);
+
+		// deploy on consecutive nodes
+		Deployment.Builder deployment_shard = Deployment.newBuilder();
+		deployment_shard.setNodeId(nodeId);
+		shard.setDeployment(deployment_shard.build());
+
+		// create nbNodes apis
+		// TODO check starting index
+		// component 0 stands for the es client
+		for (int compIndex = 0; compIndex <= nbShards; compIndex++) {
+			// api going from this component to compIndex component
+			Component.Api.Builder api = Component.Api.newBuilder();
+
+			// We add only arriving apis
+			// apiId = startComponent_thisComponent
+			api.setApiId(compIndex + "_" + componentId);
+			api.setApiName(componentName + "_" + compIndex + "_" + componentId);
+
+			// resource consumption
+			int apiMips = (compIndex == 0) ? clientToDN_mips : DNToDN_mips;
+			int apiIops = (compIndex == 0) ? clientToDN_iops : DNToDN_iops;
+			int apiRam = (compIndex == 0) ? clientToDN_ram : DNToDN_ram;
+			int apiTransferData = (compIndex == 0) ? clientToDN_transferData : DNToDN_transferData;
+			api.setMips(apiMips);
+			api.setIops(apiIops);
+			api.setRam(apiRam);
+			api.setDataToTransfer(apiTransferData);
+
+			// next apis
+			for (int compIndex2 = 0; compIndex2 <= nbShards; compIndex2++) {
+				api.addNextComponentId("" + compIndex2);
+				api.addNextApiId(compIndex + "_" + compIndex2);
+			}
+			
+			shard.addApis(api.build());
+
+		}
+
+		// create flavour
+		VeFlavour.Builder veFlavour_shard = VeFlavour.newBuilder();
+		veFlavour_shard.setCores(vmCores);
+		veFlavour_shard.setMemory(vmMemory);
+		veFlavour_shard.setStorage(vmStorage);
+		shard.setFlavour(veFlavour_shard.build());
+
+		return shard;
+
 	}
 
 	public static Component.Builder createShardComponent(String componentName, String componentId, String nodeId) {
