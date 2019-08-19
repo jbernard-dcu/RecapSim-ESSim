@@ -82,7 +82,7 @@ public class Launcher {
 		/////////////////// APPLICATION LANDSCAPE
 		///////////////////////////////////////////////////////////////////////////////////////////////
 
-		ApplicationLandscape appLandscape = Generation.GenerateAppLandscape(NB_APPS, NB_PRIMARYSHARDS, infrastructure);
+		ApplicationLandscape appLandscape = Generation.GenerateAppLandscape3(NB_APPS, NB_PRIMARYSHARDS, infrastructure);
 
 		///////////////////////////////////////////////////////////////////////////////////////////////
 		/////////////////// WORKLOAD GENERATION
@@ -100,7 +100,7 @@ public class Launcher {
 		/////////////////// RESULTS
 		///////////////////////////////////////////////////////////////////////////////////////////////
 
-		new Launcher(infrastructure, appLandscape, workload);
+		//new Launcher(infrastructure, appLandscape, workload);
 
 	}
 
@@ -109,17 +109,17 @@ public class Launcher {
 	/////////////////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	public Launcher(Infrastructure infrastructure, ApplicationLandscape appLandscape, Workload workload) {
-		this.infrastructure = infrastructure;
+	public Launcher(Infrastructure rim, ApplicationLandscape ram, Workload rwm) {
+		this.infrastructure = rim;
 
-		this.appLandscape = appLandscape;
+		this.appLandscape = ram;
 
-		this.workload = workload;
+		this.workload = rwm;
 
 		Experiment.Builder configBuilder = Experiment.newBuilder();
 		configBuilder.setName("General config");
 		configBuilder.setDuration(200);
-		configBuilder.setApplicationLandscape(appLandscape).setInfrastructure(infrastructure).setWorkload(workload);
+		configBuilder.setApplicationLandscape(ram).setInfrastructure(rim).setWorkload(rwm);
 		this.config = configBuilder.build();
 
 		this.recapExperiment = new RecapSim();
@@ -132,46 +132,6 @@ public class Launcher {
 	////////////////////////////// METHODS
 	/////////////////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////////////////
-
-	public Infrastructure getInfrastructure() {
-		return infrastructure;
-	}
-
-	public void setInfrastructure(Infrastructure infrastructure) {
-		this.infrastructure = infrastructure;
-	}
-
-	public ApplicationLandscape getAppLandscape() {
-		return appLandscape;
-	}
-
-	public void setAppLandscape(ApplicationLandscape appLandscape) {
-		this.appLandscape = appLandscape;
-	}
-
-	public Workload getWorkload() {
-		return workload;
-	}
-
-	public void setWorkload(Workload workload) {
-		this.workload = workload;
-	}
-
-	public Experiment getConfig() {
-		return config;
-	}
-
-	public void setConfig(Experiment config) {
-		this.config = config;
-	}
-
-	public RecapSim getRecapExperiment() {
-		return recapExperiment;
-	}
-
-	public void setRecapExperiment(RecapSim recapExperiment) {
-		this.recapExperiment = recapExperiment;
-	}
 
 	/**
 	 * Creates a basic Zipfian distribution, useful to create the parameter of FreqD

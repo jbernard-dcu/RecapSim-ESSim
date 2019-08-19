@@ -550,12 +550,12 @@ public final class Generation {
 			appBuilder.setApplicationId("" + appCounter).setApplicationName("" + appCounter);
 
 			// Component for WS
-			Component.Builder webServerBuilder = createWSComponent(nodeIds, nodesCounter);
+			Component.Builder webServerBuilder = createWSComponent(nodeIds.get(nodesCounter));
 			nodesCounter = (nodesCounter == indexNmberOfNodes) ? 0 : nodesCounter + 1;
 			appBuilder.addComponents(webServerBuilder.build());
 
 			// Componenet for ES Client
-			Component.Builder esClientBuilder = createESClientComponent(nodeIds, nodesCounter, nbComponents);
+			Component.Builder esClientBuilder = createESClientComponent(nodeIds.get(nodesCounter), nbComponents);
 			nodesCounter = (nodesCounter == indexNmberOfNodes) ? 0 : nodesCounter + 1;
 			appBuilder.addComponents(esClientBuilder.build());
 
