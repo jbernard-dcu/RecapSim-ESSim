@@ -11,6 +11,7 @@ import org.apache.commons.math3.distribution.ZipfDistribution;
 import org.apache.commons.math3.util.Pair;
 
 import Classes.Document;
+import Classes.ESSim;
 import Classes.Generation;
 import Classes.Shard;
 import eu.recap.sim.RecapSim;
@@ -82,13 +83,15 @@ public class Launcher {
 		/////////////////// APPLICATION LANDSCAPE
 		///////////////////////////////////////////////////////////////////////////////////////////////
 
-		ApplicationLandscape appLandscape = Generation.GenerateAppLandscape3(NB_APPS, NB_PRIMARYSHARDS, infrastructure);
+		ApplicationLandscape appLandscape = Generation.GenerateAppLandscape(NB_APPS, NB_PRIMARYSHARDS, infrastructure);
+		
+		//System.out.println(appLandscape.getApplications(0).getComponentsList().toString());
 
 		///////////////////////////////////////////////////////////////////////////////////////////////
 		/////////////////// WORKLOAD GENERATION
 		///////////////////////////////////////////////////////////////////////////////////////////////
 
-		int nbRequest = 10;
+		int nbRequest = 1;
 		int start = 100;
 
 		Workload workload = Generation.GenerateYCSBWorkload(NB_PRIMARYSHARDS, appLandscape, start, nbRequest);
@@ -100,7 +103,7 @@ public class Launcher {
 		/////////////////// RESULTS
 		///////////////////////////////////////////////////////////////////////////////////////////////
 
-		//new Launcher(infrastructure, appLandscape, workload);
+		new Launcher(infrastructure, appLandscape, workload);
 
 	}
 
@@ -122,7 +125,7 @@ public class Launcher {
 		configBuilder.setApplicationLandscape(ram).setInfrastructure(rim).setWorkload(rwm);
 		this.config = configBuilder.build();
 
-		this.recapExperiment = new RecapSim();
+		this.recapExperiment = new ESSim();
 
 		String simulationId = recapExperiment.StartSimulation(config);
 		System.out.println("Simulation is:" + recapExperiment.SimulationStatus(simulationId));

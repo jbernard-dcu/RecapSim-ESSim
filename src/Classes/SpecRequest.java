@@ -127,9 +127,8 @@ public class SpecRequest {
 	}
 
 	public double[] getPercentile(double proba) {
-		double percentile;
 
-		percentile = (proba == 0.9) ? q90
+		double percentile = (proba == 0.9) ? q90
 				: (proba == 0.99) ? q99 : (proba == 0.999) ? q999 : (proba == 0.9999) ? q9999 : 0;
 		if (percentile == 0)
 			throw new IllegalArgumentException("proba must be 0.9, 0.99, 0.999 or 0.9999");

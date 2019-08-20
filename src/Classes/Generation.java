@@ -16,6 +16,8 @@ import org.apache.commons.math3.distribution.EnumeratedDistribution;
 import org.apache.commons.math3.distribution.ExponentialDistribution;
 import org.apache.commons.math3.util.Pair;
 
+import org.eclipse.collections.impl.list.Interval;
+
 import Classes.TxtReader.typeData;
 import Main.Launcher;
 import eu.recap.sim.RecapSim;
@@ -54,13 +56,13 @@ public final class Generation {
 
 	/* Sites */
 	static final int numberSites = 1;
-	static int[] numberNodesPerSite = { /* 2 + */ Launcher.NB_PRIMARYSHARDS };// WS + ES + Data nodes
+	static int[] numberNodesPerSite = { 2 + Launcher.NB_PRIMARYSHARDS };// WS + ES + Data nodes
 
 	// Application landscape
 	// VM memory and storage expressed in Mo
 	// all VMs are the same
 
-	// Values changed for the german workload
+	// Values changed for the ycsb workload
 	// 2, 4000, 70000
 	static final int vmCores = 2;
 	static final int vmMemory = 4_000; // 5,000 in output
@@ -217,7 +219,7 @@ public final class Generation {
 			request.setApplicationId(appLandscape.getApplicationsList().get(0).getApplicationId());
 
 			// TODO MIPS data node should depend on where the request is sent
-			request.setMipsDataNodes(DataNodeToES_mips);
+			request.setMipsDataNodes(DNToES_mips);
 
 			/*
 			 * Data nodes destinations for the request
@@ -306,8 +308,38 @@ public final class Generation {
 		List<List<Object>> validRequest = TxtReader.mergeWorkloadsSimple();
 
 		// reducing the requestSet if necessary
+		
+		/*
+		
+		if (start >= 0 && nbRequest >= 0) {
+			List<List<Object>> reducedValidRequest = new ArrayList<List<Object>>();
+			TreeMap<Long,List<Object>> rvr = new TreeMap<Long,List<Object>>();
+			List<Integer> randTimes = Interval.oneTo(nbRequest);
+			Collections.shuffle(randTimes);
+			for(int field=0;field<3;field++) {
+				reducedValidRequest.add(new ArrayList<>());
+			}
+			for(int time=0;time<nbRequest;time++) {
+				rvr.put((long)validRequest.get(0).get(time),Arrays.asList(validRequest.get(1).get(time),validRequest.get(2).get(time)));
+			}
+			for(long key:rvr.keySet()) {
+				System.out.println(key);
+				reducedValidRequest.get(0).add(key);
+				reducedValidRequest.get(1).add(rvr.get(key).get(0));
+				reducedValidRequest.get(2).add(rvr.get(key).get(1));
+			}
+			
+			
+			validRequest = reducedValidRequest;
+			
+			System.out.println(validRequest.get(1).toString());
+			Thread.sleep(1000000);
+		}
+		
+	    /**/
+				
 		nbRequest = Math.min(nbRequest, validRequest.get(0).size() - start);
-		if (start >= 0) {
+		if (start >= 0 && nbRequest >= 0) {
 			List<List<Object>> reducedValidRequest = new ArrayList<List<Object>>();
 			for (int field = 0; field < validRequest.size(); field++) {
 				reducedValidRequest.add(new ArrayList<>());
@@ -319,6 +351,7 @@ public final class Generation {
 			}
 			validRequest = reducedValidRequest;
 		}
+		//*/
 
 		// Calculating frequency distribution
 		List<Integer> nodeIds = new ArrayList<Integer>();
@@ -360,6 +393,7 @@ public final class Generation {
 			// TODO multiple applications
 			requestBuilder.setApplicationId(appLandscape.getApplications(0).getApplicationId());
 			requestBuilder.setTime(date - dateInitialRequest);
+			requestBuilder.setType(type);
 
 			// Adding destination nodes
 			HashSet<Integer> dataNodeDestination = new HashSet<Integer>();
@@ -369,18 +403,10 @@ public final class Generation {
 			requestBuilder.addAllDataNodes(dataNodeDestination);
 
 			// TODO calculate data to transfer
-			requestBuilder.setDataToTransfer(1);
+			
+			requestBuilder.setDataToTransfer(100000);
 
-			/*
-			 * Performance equation :
-			 * https://www.d.umn.edu/~gshute/arch/performance-equation.xhtml
-			 * int cyclesPerOp = (int) (MULT_CPO * cyclesType.get(type));
-			 * int opsPerRequest = 1;
-			 * double processingTime = msPerCycle * cyclesPerOp * opsPerRequest;
-			 * int umCpuValue = RecapSim.getUmCpuValue();
-			 * int expectedDuration = 4 * (int) (cpuFrequency * 10 * 1E-6 / umCpuValue) +
-			 * (int) (cpuFrequency * 1E-6 / umCpuValue) * duration;
-			 */
+			// we don't have expectedDuration for this workload
 			requestBuilder.setExpectedDuration(1);
 
 			// MI = duration(s)*freq(Hz)/1E6
@@ -403,11 +429,12 @@ public final class Generation {
 	}
 
 	/**
-	 * Generates a new ApplicationLandscape taking into account the difference of
-	 * treatment between index and search requests (the dataNodes now have apis
-	 * connecting them in case of a index request)
+	 * Method to generate a general ApplicationLandscape, based on
+	 * LinknovateValidarionRAM.GenerateLinknovateValidationApplication (@author
+	 * Malika)</br>
 	 */
-	public static ApplicationLandscape GenerateAppLandscape3(int appQty, int nbDNs, Infrastructure infrastructure) {
+	public static ApplicationLandscape GenerateAppLandscape(int appQty, int nbDNs, Infrastructure infrastructure) {
+
 		long startTime = System.currentTimeMillis();
 
 		ApplicationLandscape.Builder applicationLandscapeBuilder = ApplicationLandscape.newBuilder();
@@ -434,7 +461,7 @@ public final class Generation {
 			nodesCounter = (nodesCounter == indexNmberOfNodes) ? 0 : nodesCounter + 1;
 			appBuilder.addComponents(webServerBuilder.build());
 
-			// Component for ES client
+			// Component for ES Client
 			Component.Builder esClientBuilder = createESClientComponent(nodeIds.get(nodesCounter), nbDNs);
 			nodesCounter = (nodesCounter == indexNmberOfNodes) ? 0 : nodesCounter + 1;
 			appBuilder.addComponents(esClientBuilder.build());
@@ -444,132 +471,18 @@ public final class Generation {
 			 */
 			for (int dnId = 3; dnId < 3 + nbDNs; dnId++) {
 
-				Component.Builder dnBuilder = createDNComponent("DN_" + (dnId - 2), "" + dnId,
-						nodeIds.get(nodesCounter), nbDNs);
+				// Topology #1 : non-interconnected datanodes
+				Component.Builder dnBuilder = createShardComponent("Shard_" + (dnId - 2), "" + dnId,
+						nodeIds.get(nodesCounter));
+
+				// Topology #2 : interconnected datanodes
+				// Component.Builder dnBuilder = createDNComponent("DN_" + (dnId - 2), "" +
+				// dnId,
+				// nodeIds.get(nodesCounter), nbDNs);
 
 				nodesCounter = (nodesCounter == indexNmberOfNodes) ? 0 : nodesCounter + 1;
 
 				appBuilder.addComponents(dnBuilder.build());
-			}
-
-			applicationLandscapeBuilder.addApplications(appBuilder.build());
-
-		}
-
-		System.out.println("ApplicationLandscape generated:" + (System.currentTimeMillis() - startTime) + "ms");
-
-		return applicationLandscapeBuilder.build();
-	}
-
-	/**
-	 * DN----------DN
-	 * | |
-	 * DN----...---DN
-	 */
-	public static ApplicationLandscape GenerateAppLandscape2(int appQty, int nbComponents,
-			Infrastructure infrastructure) {
-
-		long startTime = System.currentTimeMillis();
-
-		ApplicationLandscape.Builder appLandscapeBuilder = ApplicationLandscape.newBuilder();
-		appLandscapeBuilder.setNotes("Network application landscape");
-
-		// List of available nodes
-		List<String> nodeIds = new ArrayList<String>();
-		for (ResourceSite site : infrastructure.getSitesList()) {
-			for (Node node : site.getNodesList()) {
-				nodeIds.add(node.getId());
-			}
-		}
-		int indexNmberOfNodes = nodeIds.size() - 1;
-
-		int nodesCounter = 0;
-
-		for (int appCounter = 0; appCounter < appQty; appCounter++) {
-
-			// New Application builder
-			Application.Builder appBuilder = Application.newBuilder();
-			appBuilder.setApplicationId("" + appCounter).setApplicationName("" + appCounter);
-
-			// Creating, deploying and building shards
-			// "shards" go from 1 to NB_PRIMARYSHARDS. shard is the component id in fact
-			// We do not consider replication for now
-			for (int componentId = 1; componentId <= nbComponents; componentId++) {
-
-				Component.Builder componentBuilder = createComponent("Shard_" + componentId, "" + componentId,
-						nodeIds.get(nodesCounter), nodeIds.size());
-
-				nodesCounter = (nodesCounter == indexNmberOfNodes) ? 0 : nodesCounter + 1;
-
-				appBuilder.addComponents(componentBuilder.build());
-			}
-
-			appLandscapeBuilder.addApplications(appBuilder.build());
-
-		}
-
-		System.out.println("ApplicationLandscape generated:" + (System.currentTimeMillis() - startTime) + "ms");
-
-		return appLandscapeBuilder.build();
-	}
-
-	/**
-	 * Method to generate a general ApplicationLandscape, based on
-	 * LinknovateValidarionRAM.GenerateLinknovateValidationApplication (@author
-	 * Malika)</br>
-	 * 
-	 * WS
-	 * |
-	 * ES
-	 * |
-	 * ------------
-	 * DN DN ... DN
-	 */
-	public static ApplicationLandscape GenerateAppLandscape(int appQty, int nbComponents,
-			Infrastructure infrastructure) {
-
-		long startTime = System.currentTimeMillis();
-
-		ApplicationLandscape.Builder applicationLandscapeBuilder = ApplicationLandscape.newBuilder();
-		applicationLandscapeBuilder.setNotes("General application landscape");
-
-		// List of available nodes
-		List<String> nodeIds = new ArrayList<String>();
-		for (ResourceSite site : infrastructure.getSitesList()) {
-			for (Node node : site.getNodesList()) {
-				nodeIds.add(node.getId());
-			}
-		}
-		int indexNmberOfNodes = nodeIds.size() - 1;
-
-		int nodesCounter = 0;
-		for (int appCounter = 0; appCounter < appQty; appCounter++) {
-
-			// New application builder
-			Application.Builder appBuilder = Application.newBuilder();
-			appBuilder.setApplicationId("" + appCounter).setApplicationName("" + appCounter);
-
-			// Component for WS
-			Component.Builder webServerBuilder = createWSComponent(nodeIds.get(nodesCounter));
-			nodesCounter = (nodesCounter == indexNmberOfNodes) ? 0 : nodesCounter + 1;
-			appBuilder.addComponents(webServerBuilder.build());
-
-			// Componenet for ES Client
-			Component.Builder esClientBuilder = createESClientComponent(nodeIds.get(nodesCounter), nbComponents);
-			nodesCounter = (nodesCounter == indexNmberOfNodes) ? 0 : nodesCounter + 1;
-			appBuilder.addComponents(esClientBuilder.build());
-
-			/*
-			 * Creating, deploying and building shards
-			 */
-			for (int shard = 3; shard < 3 + nbComponents; shard++) {
-
-				Component.Builder shardBuilder = createShardComponent("Shard_" + (shard - 2), Integer.toString(shard),
-						nodeIds.get(nodesCounter));
-
-				nodesCounter = (nodesCounter == indexNmberOfNodes) ? 0 : nodesCounter + 1;
-
-				appBuilder.addComponents(shardBuilder.build());
 			}
 
 			applicationLandscapeBuilder.addApplications(appBuilder.build());
@@ -697,20 +610,19 @@ public final class Generation {
 		return res;
 	}
 
+	// resource consumption going from ES to DataNode
+	static final int ESToDN_mips = 1 * timeUnits / 10;
+	static final int ESToDN_iops = 1;
+	static final int ESToDN_ram = 111; // 2000
+	static final int ESToDN_transferData = 1 * timeUnits;
+	// resource consumption from datanode to datanode
+	static final int DNToDN_mips = 300 * timeUnits / 10;
+	static final int DNToDN_iops = 1;
+	static final int DNToDN_ram = 200;// 1000
+	static final int DNToDN_transferData = 1 * timeUnits;
+
 	private static Component.Builder createDNComponent(String componentName, String componentId, String nodeId,
 			int nbDNs) {
-
-		// resource consumption going from ES to DataNode
-		final int ESToDN_mips = 1 * timeUnits / 10;
-		final int ESToDN_iops = 1;
-		final int ESToDN_ram = 111; // 2000
-		final int ESToDN_transferData = 1 * timeUnits;
-
-		// resource consumption from datanode to datanode
-		final int DNToDN_mips = 300 * timeUnits / 10;
-		final int DNToDN_iops = 1;
-		final int DNToDN_ram = 200;// 1000
-		final int DNToDN_transferData = 1 * timeUnits;
 
 		// Component for DN
 		Component.Builder dnBuilder = Component.newBuilder();
@@ -742,13 +654,14 @@ public final class Generation {
 		dnApiBuilder_1.addNextApiId("2_2");
 		// adding all other dataNodes as next components
 		for (int compId = 3; compId < 3 + nbDNs; compId++) {
-			// We consider that for index requests the path from each datande to itself is
+			// We consider that for index requests the path from each datanode to itself is
 			// not necessary
 			if (componentId.contentEquals("" + compId))
 				continue;
 
 			dnApiBuilder_1.addNextComponentId("" + compId);
-			dnApiBuilder_1.addNextApiId(componentId + "_2_" + compId);
+			// arrivingComponent_2_startingComponent for next apis
+			dnApiBuilder_1.addNextApiId(compId + "_2_" + componentId);
 		}
 		dnBuilder.addApis(dnApiBuilder_1.build());
 
@@ -774,22 +687,64 @@ public final class Generation {
 
 		}
 
+		// create flavour
+		VeFlavour.Builder veFlavour_dn = VeFlavour.newBuilder();
+		veFlavour_dn.setCores(vmCores);
+		veFlavour_dn.setMemory(vmMemory);
+		veFlavour_dn.setStorage(vmStorage);
+		dnBuilder.setFlavour(veFlavour_dn.build());
+
 		return dnBuilder;
 	}
 
+	private static Component.Builder createShardComponent(String componentName, String componentId, String nodeId) {
+		Component.Builder shard = Component.newBuilder();
+		shard.setComponentName(componentName);
+		shard.setComponentId(componentId);
+		shard.setIsLoadbalanced(false);
+
+		// deploy on consecutive nodes
+		Deployment.Builder deployment_shard = Deployment.newBuilder();
+		deployment_shard.setNodeId(nodeId);
+
+		shard.setDeployment(deployment_shard.build());
+
+		// create 1 API
+		Component.Api.Builder shardApi_1 = Component.Api.newBuilder();
+		shardApi_1.setApiId(componentId + "_1");
+		shardApi_1.setApiName(shard.getComponentName() + "_" + componentId + "_1");
+		// resource consumption
+		shardApi_1.setMips(ESToDN_mips);
+		shardApi_1.setIops(ESToDN_iops);
+		shardApi_1.setRam(ESToDN_ram);
+		shardApi_1.setDataToTransfer(ESToDN_transferData);
+		// connect to next api TO-DO
+		shardApi_1.addNextComponentId("2");
+		shardApi_1.addNextApiId("2_2");
+		shard.addApis(shardApi_1.build());
+
+		// create flavour
+		VeFlavour.Builder veFlavour_shard = VeFlavour.newBuilder();
+		veFlavour_shard.setCores(vmCores);
+		veFlavour_shard.setMemory(vmMemory);
+		veFlavour_shard.setStorage(vmStorage);
+		shard.setFlavour(veFlavour_shard.build());
+
+		return shard;
+	}
+
+	// resource consumption going from web server to ES
+	static final int WSToES_mips = 300 * timeUnits / 10;
+	static final int WSToES_iops = 1;
+	static final int WSToES_ram = 200;// 500
+	static final int WSToES_transferData = 1 * timeUnits;
+	// resource consumption going from DataNode to ES
+	static final int DNToES_mips = 300 * timeUnits / 10;
+	static final int DNToES_iops = 1;
+	static final int DNToES_ram = 200;// 1000
+	static final int DNToES_transferData = 1 * timeUnits;
+
 	private static Component.Builder createESClientComponent(String nodeId, int nbDNs) {
-
-		// resource consumption going from web server to ES
-		final int WSToES_mips = 300 * timeUnits / 10;
-		final int WSToES_iops = 1;
-		final int WSToES_ram = 200;// 500
-		final int WSToES_transferData = 1 * timeUnits;
-
-		// resource consumption going from DataNode to ES
-		final int DNToES_mips = 300 * timeUnits / 10;
-		final int DNToES_iops = 1;
-		final int DNToES_ram = 200;// 1000
-		final int DNToES_transferData = 1 * timeUnits;
 
 		/*
 		 * Component for ES client
@@ -851,19 +806,18 @@ public final class Generation {
 		return esClientBuilder;
 	}
 
+	// resource consumption going from client to web server
+	static final int clientToWS_mips = 300 * timeUnits / 10;
+	static final int clientToWS_iops = 1;
+	static final int clientToWS_ram = 200;// 500
+	static final int clientToWS_transferData = 1 * timeUnits;
+	// resource consumption going from ES to Web Server
+	static final int ESToWS_mips = 300 * timeUnits / 10;
+	static final int ESToWS_iops = 1;
+	static final int ESToWS_ram = 200;// 500
+	static final int ESToWS_transferData = 1 * timeUnits;
+
 	private static Component.Builder createWSComponent(String nodeId) {
-
-		// resource consumption going from client to web server
-		final int clientToWS_mips = 300 * timeUnits / 10;
-		final int clientToWS_iops = 1;
-		final int clientToWS_ram = 200;// 500
-		final int clientToWS_transferData = 1 * timeUnits;
-
-		// resource consumption going from ES to Web Server
-		final int ESToWS_mips = 300 * timeUnits / 10;
-		final int ESToWS_iops = 1;
-		final int ESToWS_ram = 200;// 500
-		final int ESToWS_transferData = 1 * timeUnits;
 
 		// Component for WS
 		Component.Builder webServerBuilder = Component.newBuilder();
@@ -913,42 +867,6 @@ public final class Generation {
 		webServerBuilder.setFlavour(veFlavour_controlPlane.build());
 
 		return webServerBuilder;
-	}
-
-	private static Component.Builder createShardComponent(String componentName, String componentId, String nodeId) {
-		Component.Builder shard = Component.newBuilder();
-		shard.setComponentName(componentName);
-		shard.setComponentId(componentId);
-		shard.setIsLoadbalanced(false);
-
-		// deploy on consecutive nodes
-		Deployment.Builder deployment_shard = Deployment.newBuilder();
-		deployment_shard.setNodeId(nodeId);
-
-		shard.setDeployment(deployment_shard.build());
-
-		// create 1 API
-		Component.Api.Builder shardApi_1 = Component.Api.newBuilder();
-		shardApi_1.setApiId(componentId + "_1");
-		shardApi_1.setApiName(shard.getComponentName() + "_" + componentId + "_1");
-		// resource consumption
-		shardApi_1.setMips(ESToDataNode_mips);
-		shardApi_1.setIops(ESToDataNode_iops);
-		shardApi_1.setRam(ESToDataNode_ram);
-		shardApi_1.setDataToTransfer(ESToDataNode_transferData);
-		// connect to next api TO-DO
-		shardApi_1.addNextComponentId("2");
-		shardApi_1.addNextApiId("2_2");
-		shard.addApis(shardApi_1.build());
-
-		// create flavour
-		VeFlavour.Builder veFlavour_shard = VeFlavour.newBuilder();
-		veFlavour_shard.setCores(vmCores);
-		veFlavour_shard.setMemory(vmMemory);
-		veFlavour_shard.setStorage(vmStorage);
-		shard.setFlavour(veFlavour_shard.build());
-
-		return shard;
 	}
 
 }

@@ -27,7 +27,8 @@ import Main.Launcher;
 @SuppressWarnings("unused")
 public class TxtReader {
 
-	public static void main(String[] args) throws InterruptedException {
+	public static void main(String[] args) {
+		System.out.println(mergeWorkloadsSimple().get(0).size());
 
 	}
 
@@ -290,8 +291,7 @@ public class TxtReader {
 
 		List<List<Object>> validRequest = new ArrayList<List<Object>>();
 
-		final int NB_FIELDS = 6;
-		for (int field = 0; field < NB_FIELDS; field++) {
+		for (int field = 0; field < 3; field++) {
 			validRequest.add(new ArrayList<Object>());
 		}
 
@@ -313,7 +313,7 @@ public class TxtReader {
 					int minutes = Integer.parseInt(getWord(line, start + 3, ":"));
 					int seconds = Integer.parseInt(getWord(line, start + 6, ":"));
 					int milliseconds = Integer.parseInt(getWord(line, start + 9, " "));
-					long addDate = new GregorianCalendar(2018 + 1900, 11, 25, hours, minutes, seconds).getTimeInMillis()
+					long addDate = new GregorianCalendar(2018, 11, 25, hours, minutes, seconds).getTimeInMillis()
 							+ milliseconds;
 
 					// If first value, set duration to 10 000
@@ -342,11 +342,13 @@ public class TxtReader {
 							LogNormalDistribution dist = new LogNormalDistribution(
 									Math.log(avg) - Math.pow(param, 2) / 2., param);
 
+							nbOps /= 1;
+
 							/*
 							 * Adding requests
 							 */
 							for (int op = 0; op < nbOps; op++) {
-								validRequest.get(0).add(addDate + (long) (duration * op / nbOps));
+								validRequest.get(0).add(addDate + (long) (op * duration / nbOps));
 								validRequest.get(1).add(addType);
 
 								double addLatency = dist.sample();

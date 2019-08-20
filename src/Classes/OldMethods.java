@@ -9,8 +9,126 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
+import eu.recap.sim.models.ApplicationModel.Application;
+import eu.recap.sim.models.ApplicationModel.ApplicationLandscape;
+import eu.recap.sim.models.ApplicationModel.Application.Component;
+import eu.recap.sim.models.InfrastructureModel.Infrastructure;
+import eu.recap.sim.models.InfrastructureModel.Node;
+import eu.recap.sim.models.InfrastructureModel.ResourceSite;
+
 public final class OldMethods {
-	
+
+	/**
+	 * Generates a new ApplicationLandscape taking into account the difference of
+	 * treatment between index and search requests (the dataNodes now have apis
+	 * connecting them in case of a index request)
+	 */
+	public static ApplicationLandscape GenerateAppLandscape3(int appQty, int nbDNs, Infrastructure infrastructure) {
+		long startTime = System.currentTimeMillis();
+
+		ApplicationLandscape.Builder applicationLandscapeBuilder = ApplicationLandscape.newBuilder();
+		applicationLandscapeBuilder.setNotes("General application landscape");
+
+		// List of available nodes
+		List<String> nodeIds = new ArrayList<String>();
+		for (ResourceSite site : infrastructure.getSitesList()) {
+			for (Node node : site.getNodesList()) {
+				nodeIds.add(node.getId());
+			}
+		}
+		int indexNmberOfNodes = nodeIds.size() - 1;
+
+		int nodesCounter = 0;
+		for (int appCounter = 0; appCounter < appQty; appCounter++) {
+
+			// New application builder
+			Application.Builder appBuilder = Application.newBuilder();
+			appBuilder.setApplicationId("" + appCounter).setApplicationName("" + appCounter);
+
+			// Component for WS
+			Component.Builder webServerBuilder = createWSComponent(nodeIds.get(nodesCounter));
+			nodesCounter = (nodesCounter == indexNmberOfNodes) ? 0 : nodesCounter + 1;
+			appBuilder.addComponents(webServerBuilder.build());
+
+			// Component for ES client
+			Component.Builder esClientBuilder = createESClientComponent(nodeIds.get(nodesCounter), nbDNs);
+			nodesCounter = (nodesCounter == indexNmberOfNodes) ? 0 : nodesCounter + 1;
+			appBuilder.addComponents(esClientBuilder.build());
+
+			/*
+			 * Creating, deploying and building shards
+			 */
+			for (int dnId = 3; dnId < 3 + nbDNs; dnId++) {
+
+				Component.Builder dnBuilder = createDNComponent("DN_" + (dnId - 2), "" + dnId,
+						nodeIds.get(nodesCounter), nbDNs);
+
+				nodesCounter = (nodesCounter == indexNmberOfNodes) ? 0 : nodesCounter + 1;
+
+				appBuilder.addComponents(dnBuilder.build());
+			}
+
+			applicationLandscapeBuilder.addApplications(appBuilder.build());
+
+		}
+
+		System.out.println("ApplicationLandscape generated:" + (System.currentTimeMillis() - startTime) + "ms");
+
+		return applicationLandscapeBuilder.build();
+	}
+
+	/**
+	 * DN----------DN
+	 * | |
+	 * DN----...---DN
+	 */
+	public static ApplicationLandscape GenerateAppLandscape2(int appQty, int nbComponents,
+			Infrastructure infrastructure) {
+
+		long startTime = System.currentTimeMillis();
+
+		ApplicationLandscape.Builder appLandscapeBuilder = ApplicationLandscape.newBuilder();
+		appLandscapeBuilder.setNotes("Network application landscape");
+
+		// List of available nodes
+		List<String> nodeIds = new ArrayList<String>();
+		for (ResourceSite site : infrastructure.getSitesList()) {
+			for (Node node : site.getNodesList()) {
+				nodeIds.add(node.getId());
+			}
+		}
+		int indexNmberOfNodes = nodeIds.size() - 1;
+
+		int nodesCounter = 0;
+
+		for (int appCounter = 0; appCounter < appQty; appCounter++) {
+
+			// New Application builder
+			Application.Builder appBuilder = Application.newBuilder();
+			appBuilder.setApplicationId("" + appCounter).setApplicationName("" + appCounter);
+
+			// Creating, deploying and building shards
+			// "shards" go from 1 to NB_PRIMARYSHARDS. shard is the component id in fact
+			// We do not consider replication for now
+			for (int componentId = 1; componentId <= nbComponents; componentId++) {
+
+				Component.Builder componentBuilder = createComponent("Shard_" + componentId, "" + componentId,
+						nodeIds.get(nodesCounter), nodeIds.size());
+
+				nodesCounter = (nodesCounter == indexNmberOfNodes) ? 0 : nodesCounter + 1;
+
+				appBuilder.addComponents(componentBuilder.build());
+			}
+
+			appLandscapeBuilder.addApplications(appBuilder.build());
+
+		}
+
+		System.out.println("ApplicationLandscape generated:" + (System.currentTimeMillis() - startTime) + "ms");
+
+		return appLandscapeBuilder.build();
+	}
+
 	/**
 	 * Return the join of the two workloads. Values are re-sorted by date</br>
 	 * 0=date(long), 1=type(String), 2=latency(double)
@@ -50,7 +168,7 @@ public final class OldMethods {
 		return workloadMerged;
 
 	}
-	
+
 	/**
 	 * 0=Date, 1=time, 2=nOp, 3=throughput, 4=estTime, 5=specs
 	 */

@@ -1,7 +1,9 @@
 package Classes;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.cloudbus.cloudsim.utilizationmodels.UtilizationModel;
 import org.cloudbus.cloudsim.utilizationmodels.UtilizationModelDynamic;
@@ -21,13 +23,13 @@ import eu.recap.sim.models.ApplicationModel.Application.Component.Api;
 import eu.recap.sim.models.InfrastructureModel.Link;
 import eu.recap.sim.models.WorkloadModel.Request;
 
+@SuppressWarnings("unused")
 public class ESSim extends RecapSim {
 
-	public static void main(String[] args) {
-		int a=10;
-		
-		System.out.println(a);
-	}
+	//////////////////////////////////////////////////////////////////////////////////////////
+	/////////////////// OVERRIDES
+	//////////////////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////////////////
 
 	@Override
 	protected IRecapCloudlet createCloudlet(Vm vm, long mi, long inputFileSize, long outputFileSize, long io,
@@ -100,7 +102,7 @@ public class ESSim extends RecapSim {
 					finishedRecapCloudlet.getApplicationId(), finishedRecapCloudlet.getApplicationComponentId(),
 					finishedRecapCloudlet.getApiId());
 
-			// check if we have a chain of application compoents attached
+			// check if we have a chain of application components attached
 			if (!currentApi.getNextApiIdList().isEmpty() && !currentApi.getNextComponentIdList().isEmpty()) {
 				Log.printFormattedLine("Found next component IDs:" + currentApi.getNextComponentIdList());
 				Log.printFormattedLine("            with API IDs:" + currentApi.getNextApiIdList());
@@ -133,12 +135,33 @@ public class ESSim extends RecapSim {
 						IRecapVe targetVe = getMatchingVeId(finishedRecapCloudlet.getApplicationId(),
 								currentApi.getNextComponentId(0));
 						// 2b. create cloudlet
+						int inputFileSize=0;
+						int outputFileSize=0;
+						if (request.getType().contentEquals("INSERT")) {
+							inputFileSize = 10000000;
+							outputFileSize = 1000;
+						}
+						if (request.getType().contentEquals("UPDATE")) {
+							inputFileSize=5000;
+							outputFileSize = 1000;
+						}
+						if(request.getType().contentEquals("READ")) {
+							inputFileSize=1000;
+							outputFileSize = 100_000;
+						}
 
-						IRecapCloudlet newRecapCloudlet = createCloudlet(targetVe, nextApi.getMips(),
+						/*IRecapCloudlet newRecapCloudlet = createCloudlet(targetVe, nextApi.getMips(),
 								nextApi.getDataToTransfer(), nextApi.getDataToTransfer(), nextApi.getIops(), delay,
 								finishedRecapCloudlet.getApplicationId(), currentApi.getNextComponentId(0),
 								nextApi.getApiId(), nextApi.getRam(), finishedRecapCloudlet.getRequestId(),
 								finishedRecapCloudlet.getOriginDeviceId());
+						newRecapCloudlet.setBwUpdateTime(simulation.clock());*/
+						
+						IRecapCloudlet newRecapCloudlet = createCloudlet(targetVe, nextApi.getMips(),
+						inputFileSize, outputFileSize, nextApi.getIops(), delay,
+						finishedRecapCloudlet.getApplicationId(), currentApi.getNextComponentId(0),
+						nextApi.getApiId(), nextApi.getRam(), finishedRecapCloudlet.getRequestId(),
+						finishedRecapCloudlet.getOriginDeviceId());
 						newRecapCloudlet.setBwUpdateTime(simulation.clock());
 
 						// 2a. calculate delay based on the connection
@@ -364,6 +387,54 @@ public class ESSim extends RecapSim {
 
 		}
 
+	}
+
+	//////////////////////////////////////////////////////////////////////////////////////////
+	/////////////////// ADDITIONAL METHODS
+	//////////////////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////////////////
+
+	/**
+	 * Returns the list of next apis depending on the type of the request.</br>
+	 * </br>
+	 * 
+	 * - "INSERT" or "UPDATE" : i.e. index requests in ElasticSearch, travel from
+	 * the node holding the primary shard to all other nodes and synced on the
+	 * primary node</br>
+	 * - "xxx-FAILED" : TODO go back to ES Client without treatment</br>
+	 * - "READ" : normal behaviour of RecapSim
+	 */
+	private static List<String> getNextApisIdList(Api currentApi, Request r) {
+		String type = r.getType();
+
+		List<String> currentApiNextList = currentApi.getNextApiIdList();
+
+		List<String> nextApiIdList = new ArrayList<String>();
+
+		if (currentApi.getApiId().matches("\\d+_1")) {
+
+			// if the request is of type INDEX, then remove api "2_2" from next apis
+			List<String> indexType = Arrays.asList("INSERT", "UPDATE");
+			if (indexType.contains(type)) {
+				for (String apiId : currentApiNextList) {
+					if (!apiId.contentEquals("2_2"))
+						nextApiIdList.add(apiId);
+				}
+			}
+
+			// if the request is of type READ, then just execute once on each selected
+			// datanode
+			if (type.contentEquals("READ"))
+				nextApiIdList = Arrays.asList("2_2");
+		}
+
+		return nextApiIdList;
+	}
+
+	private static List<String> getNextComponentsIdList(Api currentApi, Request r) {
+		List<String> nextApiIdList = getNextApisIdList(currentApi, r);
+		nextApiIdList.replaceAll(s -> s.substring(0, s.indexOf("_")));
+		return nextApiIdList;
 	}
 
 }
