@@ -72,6 +72,7 @@ public class TxtReader {
 	/**
 	 * Method to calculate the approx. repartition of the requests among the data
 	 * nodes, based on CpuLoad
+	 * @throws InterruptedException 
 	 */
 	@SuppressWarnings("unchecked")
 	public static Double[] calculateRepartNodes(int nbNodes, typeData type) {
@@ -351,8 +352,8 @@ public class TxtReader {
 								validRequest.get(0).add(addDate + (long) (op * duration / nbOps));
 								validRequest.get(1).add(addType);
 
-								double addLatency = dist.sample();
-								validRequest.get(2).add(addLatency);
+								//double addLatency = dist.sample();
+								validRequest.get(2).add(avg);
 							}
 
 						}

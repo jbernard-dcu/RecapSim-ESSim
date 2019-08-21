@@ -76,12 +76,12 @@ public final class Generation {
 	/* Hosts */
 	static final int[][] cpuFrequency = initSameValue(numberSites, numberNodesPerSite, 3000); // MIPS or 2.6 GHz
 	static final int[][] cpuCores = initSameValue(numberSites, numberNodesPerSite, 80);
-	static final int[][] ram = initSameValue(numberSites, numberNodesPerSite, 2048_000); // host memory (MEGABYTE)
+	static final int[][] ram = initSameValue(numberSites, numberNodesPerSite, (int)1E12); // host memory (MEGABYTE)
 	static final int[][] hdd = initSameValue(numberSites, numberNodesPerSite, 1_000_000_000); // host storage (MEGABYTE)
 	static final int bw = 10_000; // 10Gbit/s
 
 	// repartition between data nodes
-	static typeData typeRepart = typeData.NetworkReceived;
+	static typeData typeRepart = typeData.CpuLoad;
 	static int numberNodes = Launcher.NB_PRIMARYSHARDS;
 	static int nNodesServingRequest = 6 /* Launcher.randGint(numberNodes / 2., numberNodes / 6., 0, numberNodes) */;
 
@@ -339,7 +339,7 @@ public final class Generation {
 	    /**/
 				
 		nbRequest = Math.min(nbRequest, validRequest.get(0).size() - start);
-		if (start >= 0 && nbRequest >= 0) {
+		if (start >= 0 && nbRequest > 0) {
 			List<List<Object>> reducedValidRequest = new ArrayList<List<Object>>();
 			for (int field = 0; field < validRequest.size(); field++) {
 				reducedValidRequest.add(new ArrayList<>());
@@ -404,7 +404,7 @@ public final class Generation {
 
 			// TODO calculate data to transfer
 			
-			requestBuilder.setDataToTransfer(100000);
+			requestBuilder.setDataToTransfer(1);
 
 			// we don't have expectedDuration for this workload
 			requestBuilder.setExpectedDuration(1);
@@ -613,12 +613,12 @@ public final class Generation {
 	// resource consumption going from ES to DataNode
 	static final int ESToDN_mips = 1 * timeUnits / 10;
 	static final int ESToDN_iops = 1;
-	static final int ESToDN_ram = 111; // 2000
+	static final int ESToDN_ram = 1; // 2000
 	static final int ESToDN_transferData = 1 * timeUnits;
 	// resource consumption from datanode to datanode
 	static final int DNToDN_mips = 300 * timeUnits / 10;
 	static final int DNToDN_iops = 1;
-	static final int DNToDN_ram = 200;// 1000
+	static final int DNToDN_ram = 1;// 1000
 	static final int DNToDN_transferData = 1 * timeUnits;
 
 	private static Component.Builder createDNComponent(String componentName, String componentId, String nodeId,
@@ -741,7 +741,7 @@ public final class Generation {
 	// resource consumption going from DataNode to ES
 	static final int DNToES_mips = 300 * timeUnits / 10;
 	static final int DNToES_iops = 1;
-	static final int DNToES_ram = 200;// 1000
+	static final int DNToES_ram = 1;// 1000
 	static final int DNToES_transferData = 1 * timeUnits;
 
 	private static Component.Builder createESClientComponent(String nodeId, int nbDNs) {
@@ -814,7 +814,7 @@ public final class Generation {
 	// resource consumption going from ES to Web Server
 	static final int ESToWS_mips = 300 * timeUnits / 10;
 	static final int ESToWS_iops = 1;
-	static final int ESToWS_ram = 200;// 500
+	static final int ESToWS_ram = 1;// 500
 	static final int ESToWS_transferData = 1 * timeUnits;
 
 	private static Component.Builder createWSComponent(String nodeId) {

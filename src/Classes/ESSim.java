@@ -3,6 +3,8 @@ package Classes;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import org.cloudbus.cloudsim.utilizationmodels.UtilizationModel;
@@ -12,6 +14,7 @@ import org.cloudbus.cloudsim.utilizationmodels.UtilizationModel.Unit;
 import org.cloudbus.cloudsim.vms.Vm;
 import org.cloudsimplus.listeners.CloudletVmEventInfo;
 
+import Classes.TxtReader.typeData;
 import eu.recap.sim.RecapSim;
 import eu.recap.sim.cloudsim.cloudlet.IRecapCloudlet;
 import eu.recap.sim.cloudsim.cloudlet.RecapCloudlet;
@@ -21,10 +24,12 @@ import eu.recap.sim.helpers.Log;
 import eu.recap.sim.helpers.ModelHelpers;
 import eu.recap.sim.models.ApplicationModel.Application.Component.Api;
 import eu.recap.sim.models.InfrastructureModel.Link;
+import eu.recap.sim.models.InfrastructureModel.ResourceSite;
 import eu.recap.sim.models.WorkloadModel.Request;
 
-@SuppressWarnings("unused")
 public class ESSim extends RecapSim {
+
+	private typeData typeRepart = Generation.typeRepart;
 
 	//////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////// OVERRIDES
@@ -95,6 +100,8 @@ public class ESSim extends RecapSim {
 
 			Log.printFormattedLine("\n#EventListener: Cloudlet %d finished running at Vm %d at time %.2f",
 					finishedRecapCloudlet.getId(), currentVe.getId(), eventInfo.getTime());
+			
+			Double[] repartNodes = TxtReader.calculateRepartNodes(getNbNodes(), typeRepart);
 
 			// 1. Check if the Request that has triggered the VM has next
 			// cloudlet to execute
@@ -135,33 +142,37 @@ public class ESSim extends RecapSim {
 						IRecapVe targetVe = getMatchingVeId(finishedRecapCloudlet.getApplicationId(),
 								currentApi.getNextComponentId(0));
 						// 2b. create cloudlet
-						int inputFileSize=0;
-						int outputFileSize=0;
+
+						// Filesize parameters
+						int inputFileSize = 0;
+						int outputFileSize = 0;
 						if (request.getType().contentEquals("INSERT")) {
-							inputFileSize = 10000000;
-							outputFileSize = 1000;
+							inputFileSize = 1;
+							outputFileSize = 1;
 						}
 						if (request.getType().contentEquals("UPDATE")) {
-							inputFileSize=5000;
-							outputFileSize = 1000;
+							inputFileSize = 5;
+							outputFileSize = 1;
 						}
-						if(request.getType().contentEquals("READ")) {
-							inputFileSize=1000;
-							outputFileSize = 100_000;
+						if (request.getType().contentEquals("READ")) {
+							inputFileSize = 1;
+							outputFileSize = 1;
 						}
 
-						/*IRecapCloudlet newRecapCloudlet = createCloudlet(targetVe, nextApi.getMips(),
-								nextApi.getDataToTransfer(), nextApi.getDataToTransfer(), nextApi.getIops(), delay,
-								finishedRecapCloudlet.getApplicationId(), currentApi.getNextComponentId(0),
-								nextApi.getApiId(), nextApi.getRam(), finishedRecapCloudlet.getRequestId(),
-								finishedRecapCloudlet.getOriginDeviceId());
-						newRecapCloudlet.setBwUpdateTime(simulation.clock());*/
-						
-						IRecapCloudlet newRecapCloudlet = createCloudlet(targetVe, nextApi.getMips(),
-						inputFileSize, outputFileSize, nextApi.getIops(), delay,
-						finishedRecapCloudlet.getApplicationId(), currentApi.getNextComponentId(0),
-						nextApi.getApiId(), nextApi.getRam(), finishedRecapCloudlet.getRequestId(),
-						finishedRecapCloudlet.getOriginDeviceId());
+						/*
+						 * IRecapCloudlet newRecapCloudlet = createCloudlet(targetVe, nextApi.getMips(),
+						 * nextApi.getDataToTransfer(), nextApi.getDataToTransfer(), nextApi.getIops(),
+						 * delay,
+						 * finishedRecapCloudlet.getApplicationId(), currentApi.getNextComponentId(0),
+						 * nextApi.getApiId(), nextApi.getRam(), finishedRecapCloudlet.getRequestId(),
+						 * finishedRecapCloudlet.getOriginDeviceId());
+						 * newRecapCloudlet.setBwUpdateTime(simulation.clock());
+						 */
+
+						IRecapCloudlet newRecapCloudlet = createCloudlet(targetVe, nextApi.getMips(), inputFileSize,
+								outputFileSize, nextApi.getIops(), delay, finishedRecapCloudlet.getApplicationId(),
+								currentApi.getNextComponentId(0), nextApi.getApiId(), nextApi.getRam(),
+								finishedRecapCloudlet.getRequestId(), finishedRecapCloudlet.getOriginDeviceId());
 						newRecapCloudlet.setBwUpdateTime(simulation.clock());
 
 						// 2a. calculate delay based on the connection
@@ -280,8 +291,9 @@ public class ESSim extends RecapSim {
 						// 2b. create cloudlet
 
 						// Updated MIPS DataNodes here
+						double mi = repartNodes[positionNexApi] * request.getMipsDataNodes();
 
-						IRecapCloudlet newRecapCloudlet = createCloudlet(targetVe, request.getMipsDataNodes(),
+						IRecapCloudlet newRecapCloudlet = createCloudlet(targetVe, (int) mi,
 								nextApi.getDataToTransfer(), nextApi.getDataToTransfer(), nextApi.getIops(), delay,
 								finishedRecapCloudlet.getApplicationId(), currentApi.getNextComponentId(positionNexApi),
 								nextApi.getApiId(), nextApi.getRam(), finishedRecapCloudlet.getRequestId(),
@@ -331,8 +343,6 @@ public class ESSim extends RecapSim {
 							// calculate delay Megabits Bytes
 							double ByteperSecond = 125000 * availableBandwithSliceForCloudlet;
 							delay = ByteperSecond / newRecapCloudlet.getFileSize();
-
-							System.out.println("DELAY:" + delay);
 
 							newRecapCloudlet.setSubmissionDelay(delay);
 
@@ -389,6 +399,91 @@ public class ESSim extends RecapSim {
 
 	}
 
+	/**
+	 * Shows TABLE CPU utilization of all VMs into a given Datacenter.
+	 */
+	@Override
+	protected void showTableCpuUtilizationForAllVms(final double simulationFinishTime, List<IRecapVe> veList) {
+
+		TreeMap<Double, List<Double>> cpuUtilisation = new TreeMap<Double, List<Double>>();
+
+		for (Vm vm : veList) {
+			for (Map.Entry<Double, Double> entry : vm.getUtilizationHistory().getHistory().entrySet()) {
+				final double time = entry.getKey();
+				final double vmCpuUsage = entry.getValue() * 100;
+
+				if (!cpuUtilisation.containsKey(time)) {
+					ArrayList<Double> zeros = new ArrayList<Double>();
+					for (int i = 0; i < veList.size(); i++) {
+						zeros.add(-1.);
+					}
+					cpuUtilisation.put(time, zeros);
+				}
+
+				cpuUtilisation.get(time).set((int) vm.getId(), vmCpuUsage);
+			}
+		}
+
+		System.out.println("/*********************************/");
+		System.out.println(" CPU Utilisation");
+		System.out.println("/*********************************/");
+
+		System.out.print("Time");
+		for (int i = 0; i < veList.size(); i++) {
+			System.out.print("\tVM" + i);
+		}
+		System.out.println("");
+
+		// continue printing previous CPU utilisation of unchanged
+		// start at zero
+		Double previousTime = 0.0;
+		List<Double> previousValues = new ArrayList<Double>();
+		for (int v = 0; v < veList.size(); v++) {
+			previousValues.add(0.);
+		}
+
+		for (Map.Entry<Double, List<Double>> entry : cpuUtilisation.entrySet()) {
+
+			// print zero usage of cpu if waited too long
+			if ((entry.getKey() / timeUnits - previousTime) > 20) {
+				// print next time
+				System.out.printf("%6.5f", previousTime);
+				List<Double> currentValues = entry.getValue();
+				for (int v = 0; v < currentValues.size(); v++) {
+
+					System.out.printf("\t%6.3f", 0.0);
+
+				}
+				System.out.println("");
+
+				// print previous time
+				System.out.printf("%6.5f", entry.getKey() / timeUnits);
+				for (int v = 0; v < currentValues.size(); v++) {
+
+					System.out.printf("\t%6.3f", 0.0);
+
+				}
+				System.out.println("");
+			}
+
+			// print CPU value
+			System.out.printf("%6.5f", entry.getKey() / timeUnits);
+
+			List<Double> currentValues = entry.getValue();
+			for (int v = 0; v < currentValues.size(); v++) {
+				if (currentValues.get(v) == -1) {
+					currentValues.set(v, previousValues.get(v));
+				}
+
+				System.out.printf("\t%6.3f", currentValues.get(v));
+
+			}
+			System.out.println("");
+			previousValues = currentValues;
+			previousTime = entry.getKey() / timeUnits;
+		}
+	}
+
 	//////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////// ADDITIONAL METHODS
 	//////////////////////////////////////////////////////////////////////////////////////////
@@ -435,6 +530,14 @@ public class ESSim extends RecapSim {
 		List<String> nextApiIdList = getNextApisIdList(currentApi, r);
 		nextApiIdList.replaceAll(s -> s.substring(0, s.indexOf("_")));
 		return nextApiIdList;
+	}
+
+	private int getNbNodes() {
+		int nbNodes = 0;
+		for (ResourceSite site : super.rim.getSitesList()) {
+			nbNodes += site.getNodesCount();
+		}
+		return nbNodes - 2;
 	}
 
 }
