@@ -72,10 +72,11 @@ public class TxtReader {
 	/**
 	 * Method to calculate the approx. repartition of the requests among the data
 	 * nodes, based on CpuLoad
-	 * @throws InterruptedException 
+	 * 
+	 * @throws InterruptedException
 	 */
 	@SuppressWarnings("unchecked")
-	public static Double[] calculateRepartNodes(int nbNodes, typeData type) {
+	public static double[] calculateRepartNodes(int nbNodes, typeData type) {
 
 		int[] vms;
 		switch (nbNodes) {
@@ -118,7 +119,7 @@ public class TxtReader {
 		}
 
 		// average for each VM of the normalized cpu load
-		Double[] distribution = new Double[vms.length];
+		double[] distribution = new double[vms.length];
 
 		for (int vm = 0; vm < normCpuLoads.size(); vm++) {
 			double sum = 0;
@@ -131,6 +132,74 @@ public class TxtReader {
 
 		return distribution;
 
+	}
+
+	public static double[] getAvgUsage(int nbNodes, typeData type) {
+		int[] vms;
+		switch (nbNodes) {
+		case 3:
+			vms = new int[] { 111, 144, 164 };
+			break;
+		case 9:
+			vms = new int[] { 111, 121, 122, 142, 143, 144, 164, 212, 250 }; // VM 149 not a data node
+			break;
+		default:
+			throw new IllegalArgumentException("nbNodes can only be 3 or 9 using GenerateYCSBWorkload");
+		}
+
+		// getting cpuLoads
+		List<List<Double>> cpuLoads = new ArrayList<List<Double>>();
+		for (int vm : vms) {
+			@SuppressWarnings("unchecked")
+			List<Double> add = (List<Double>) (List<?>) readMonitoring(nbNodes, type, vm).get(2);
+
+			if (vm == 111)
+				add = add.subList(10, add.size()); // removing the 10 first values of VM111 to align timestamps
+			cpuLoads.add(add);
+		}
+
+		double[] avgs = new double[vms.length];
+		for (int vm = 0; vm < vms.length; vm++) {
+			for (int time = 0; time < cpuLoads.get(vm).size(); time++) {
+				avgs[vm] += cpuLoads.get(vm).get(time);
+			}
+			avgs[vm] /= (double) cpuLoads.get(vm).size();
+		}
+
+		return avgs;
+
+	}
+
+	public static double[] getStdUsage(int nbNodes, typeData type) {
+		int[] vms;
+		switch (nbNodes) {
+		case 3:
+			vms = new int[] { 111, 144, 164 };
+			break;
+		case 9:
+			vms = new int[] { 111, 121, 122, 142, 143, 144, 164, 212, 250 }; // VM 149 not a data node
+			break;
+		default:
+			throw new IllegalArgumentException("nbNodes can only be 3 or 9 using GenerateYCSBWorkload");
+		}
+
+		// getting cpuLoads
+		List<List<Double>> cpuLoads = new ArrayList<List<Double>>();
+		for (int vm : vms) {
+			@SuppressWarnings("unchecked")
+			List<Double> add = (List<Double>) (List<?>) readMonitoring(nbNodes, type, vm).get(2);
+
+			if (vm == 111)
+				add = add.subList(10, add.size()); // removing the 10 first values of VM111 to align timestamps
+			cpuLoads.add(add);
+		}
+
+		double[] stds = new double[vms.length];
+		for (int vm = 0; vm < vms.length; vm++) {
+			stds[vm] = (Collections.max(cpuLoads.get(vm))-Collections.min(cpuLoads.get(vm)))/4.;
+		}
+		
+		return stds;
 	}
 
 	public static int[][] initFromSource(String filepath, String choice) {
@@ -352,7 +421,7 @@ public class TxtReader {
 								validRequest.get(0).add(addDate + (long) (op * duration / nbOps));
 								validRequest.get(1).add(addType);
 
-								//double addLatency = dist.sample();
+								// double addLatency = dist.sample();
 								validRequest.get(2).add(avg);
 							}
 

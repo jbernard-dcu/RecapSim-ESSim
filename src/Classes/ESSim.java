@@ -4,8 +4,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.TreeMap;
-import java.util.stream.Collectors;
 
 import org.cloudbus.cloudsim.utilizationmodels.UtilizationModel;
 import org.cloudbus.cloudsim.utilizationmodels.UtilizationModelDynamic;
@@ -24,12 +24,15 @@ import eu.recap.sim.helpers.Log;
 import eu.recap.sim.helpers.ModelHelpers;
 import eu.recap.sim.models.ApplicationModel.Application.Component.Api;
 import eu.recap.sim.models.InfrastructureModel.Link;
-import eu.recap.sim.models.InfrastructureModel.ResourceSite;
 import eu.recap.sim.models.WorkloadModel.Request;
 
 public class ESSim extends RecapSim {
 
-	private typeData typeRepart = Generation.typeRepart;
+	final static typeData typeRepart = Generation.typeRepart;
+	final static int nbDataNodes = Generation.nbDataNodes;
+
+	final static double[] avgUsages = TxtReader.getAvgUsage(nbDataNodes, typeData.CpuLoad);
+	final static double[] stdUsages = TxtReader.getStdUsage(nbDataNodes, typeData.CpuLoad);
 
 	//////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////// OVERRIDES
@@ -40,34 +43,46 @@ public class ESSim extends RecapSim {
 	protected IRecapCloudlet createCloudlet(Vm vm, long mi, long inputFileSize, long outputFileSize, long io,
 			double submissionDelay, String applicationId, String componentId, String apiId, double ram_cloudlet,
 			int requestId, String originDeviceId) {
-		// final long length = 10000; //in Million Structions (MI)
-		// final long fileSize = 300; //Size (in bytes) before execution
-		// final long outputSize = 300; //Size (in bytes) after execution
-		int numberOfCpuCores = (int) vm.getNumberOfPes(); // cloudlet will
-															// use all the
-															// VM's CPU
-															// cores
+
+		final long length = 10000; // in Million Instructions (MI)
+		mi = length;
+
+		// cloudlet will use all the VM's CPU cores
+		int numberOfCpuCores = (int) vm.getNumberOfPes();
+
 		numberOfCpuCores = 1;
 
-		// Defines how CPU, RAM and Bandwidth resources are used
-		// Sets the same utilization model for all these resources.
-		UtilizationModel utilization = new UtilizationModelFull();
+		/*
+		 * UtilizationModel for RAM
+		 */
+		// UtilizationModel uRamES = new UtilizationModelDynamic(Unit.PERCENTAGE, 50);
+		UtilizationModel uRamES = new UtilizationModelDynamic(Unit.ABSOLUTE, ram_cloudlet);
 
-		// Default ElasticSearch setting here
-		UtilizationModel uRamES = new UtilizationModelDynamic(Unit.PERCENTAGE, 50);
+		/*
+		 * UtilizationModel for CPU
+		 */
+		UtilizationModelDynamic uCpuES = new UtilizationModelDynamic(Unit.ABSOLUTE, umCpuValue);
+		// check if we're executing on one of the dataNodes
+		/*if (Integer.valueOf(componentId) >= 3) {
+			double avg = avgUsages[Integer.valueOf(componentId) - 3];
+			double std = stdUsages[Integer.valueOf(componentId) - 3];
 
-		UtilizationModel utilizationCpu = /* utilization;// */new UtilizationModelDynamic(Unit.ABSOLUTE,
-				RecapSim.getUmCpuValue());
-		UtilizationModel utilizationRam = /* uRamES;// */new UtilizationModelDynamic(Unit.ABSOLUTE, ram_cloudlet);
-		UtilizationModel utilizationBw = new UtilizationModelFull();
+			uCpuES = new UtilizationModelDynamic(Unit.PERCENTAGE, avg);
+			uCpuES.setUtilizationUpdateFunction(
+					um -> um.getUtilization() + getNextIncrement(std / 3., um.getUtilization()));
+		}*/
 
-//		IRecapCloudlet recapCloudlet = (IRecapCloudlet) new RecapCloudlet(cloudletList.size(), mi, numberOfCpuCores)
-//				.setFileSize(inputFileSize).setOutputSize(outputFileSize).setUtilizationModel(new UtilizationModelDynamic(0.1)).setVm(vm)
-//				.addOnFinishListener(this::onCloudletFinishListener);
+		/*
+		 * UtilizationModel for BW
+		 */
+		UtilizationModel uBwES = new UtilizationModelFull();
 
+		/*
+		 * Creating new cloudlet
+		 */
 		IRecapCloudlet recapCloudlet = (IRecapCloudlet) new RecapCloudlet(cloudletList.size(), mi, numberOfCpuCores)
-				.setFileSize(inputFileSize).setOutputSize(outputFileSize).setUtilizationModelCpu(utilizationCpu)
-				.setUtilizationModelRam(utilizationRam).setUtilizationModelBw(utilizationBw).setVm(vm)
+				.setFileSize(inputFileSize).setOutputSize(outputFileSize).setUtilizationModelCpu(uCpuES)
+				.setUtilizationModelRam(uRamES).setUtilizationModelBw(uBwES).setVm(vm)
 				.addOnFinishListener(this::onCloudletFinishListener);
 
 		recapCloudlet.setSubmissionDelay(submissionDelay);
@@ -100,8 +115,8 @@ public class ESSim extends RecapSim {
 
 			Log.printFormattedLine("\n#EventListener: Cloudlet %d finished running at Vm %d at time %.2f",
 					finishedRecapCloudlet.getId(), currentVe.getId(), eventInfo.getTime());
-			
-			Double[] repartNodes = TxtReader.calculateRepartNodes(getNbNodes(), typeRepart);
+
+			double[] repartNodes = TxtReader.calculateRepartNodes(nbDataNodes, typeRepart);
 
 			// 1. Check if the Request that has triggered the VM has next
 			// cloudlet to execute
@@ -144,6 +159,8 @@ public class ESSim extends RecapSim {
 						// 2b. create cloudlet
 
 						// Filesize parameters
+						// int inputFileSize = nextApi.getDataToTransfer();
+						// int outputFileSize = nextApi.getDataToTransfer();
 						int inputFileSize = 0;
 						int outputFileSize = 0;
 						if (request.getType().contentEquals("INSERT")) {
@@ -158,16 +175,6 @@ public class ESSim extends RecapSim {
 							inputFileSize = 1;
 							outputFileSize = 1;
 						}
-
-						/*
-						 * IRecapCloudlet newRecapCloudlet = createCloudlet(targetVe, nextApi.getMips(),
-						 * nextApi.getDataToTransfer(), nextApi.getDataToTransfer(), nextApi.getIops(),
-						 * delay,
-						 * finishedRecapCloudlet.getApplicationId(), currentApi.getNextComponentId(0),
-						 * nextApi.getApiId(), nextApi.getRam(), finishedRecapCloudlet.getRequestId(),
-						 * finishedRecapCloudlet.getOriginDeviceId());
-						 * newRecapCloudlet.setBwUpdateTime(simulation.clock());
-						 */
 
 						IRecapCloudlet newRecapCloudlet = createCloudlet(targetVe, nextApi.getMips(), inputFileSize,
 								outputFileSize, nextApi.getIops(), delay, finishedRecapCloudlet.getApplicationId(),
@@ -532,12 +539,11 @@ public class ESSim extends RecapSim {
 		return nextApiIdList;
 	}
 
-	private int getNbNodes() {
-		int nbNodes = 0;
-		for (ResourceSite site : super.rim.getSitesList()) {
-			nbNodes += site.getNodesCount();
-		}
-		return nbNodes - 2;
+	private final static double getNextIncrement(double scale, double currentUtilization) {
+		double increment = (new Random().nextGaussian()) * scale;
+		if (currentUtilization + increment < 0)
+			increment = -currentUtilization;
+		return increment;
 	}
 
 }

@@ -76,14 +76,14 @@ public final class Generation {
 	/* Hosts */
 	static final int[][] cpuFrequency = initSameValue(numberSites, numberNodesPerSite, 3000); // MIPS or 2.6 GHz
 	static final int[][] cpuCores = initSameValue(numberSites, numberNodesPerSite, 80);
-	static final int[][] ram = initSameValue(numberSites, numberNodesPerSite, (int)1E12); // host memory (MEGABYTE)
-	static final int[][] hdd = initSameValue(numberSites, numberNodesPerSite, 1_000_000_000); // host storage (MEGABYTE)
+	static final int[][] ram = initSameValue(numberSites, numberNodesPerSite, (int) 1E12); // host memory (MEGABYTE)
+	static final int[][] hdd = initSameValue(numberSites, numberNodesPerSite, (int) 1E9); // host storage (MEGABYTE)
 	static final int bw = 10_000; // 10Gbit/s
 
 	// repartition between data nodes
 	static typeData typeRepart = typeData.CpuLoad;
-	static int numberNodes = Launcher.NB_PRIMARYSHARDS;
-	static int nNodesServingRequest = 6 /* Launcher.randGint(numberNodes / 2., numberNodes / 6., 0, numberNodes) */;
+	static int nbDataNodes = Launcher.NB_PRIMARYSHARDS;
+	static int nbDataNodesPerRequest = 6 /* Launcher.randGint(numberNodes / 2., numberNodes / 6., 0, numberNodes) */;
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////// GENERATORS
@@ -308,36 +308,38 @@ public final class Generation {
 		List<List<Object>> validRequest = TxtReader.mergeWorkloadsSimple();
 
 		// reducing the requestSet if necessary
-		
+
 		/*
-		
-		if (start >= 0 && nbRequest >= 0) {
-			List<List<Object>> reducedValidRequest = new ArrayList<List<Object>>();
-			TreeMap<Long,List<Object>> rvr = new TreeMap<Long,List<Object>>();
-			List<Integer> randTimes = Interval.oneTo(nbRequest);
-			Collections.shuffle(randTimes);
-			for(int field=0;field<3;field++) {
-				reducedValidRequest.add(new ArrayList<>());
-			}
-			for(int time=0;time<nbRequest;time++) {
-				rvr.put((long)validRequest.get(0).get(time),Arrays.asList(validRequest.get(1).get(time),validRequest.get(2).get(time)));
-			}
-			for(long key:rvr.keySet()) {
-				System.out.println(key);
-				reducedValidRequest.get(0).add(key);
-				reducedValidRequest.get(1).add(rvr.get(key).get(0));
-				reducedValidRequest.get(2).add(rvr.get(key).get(1));
-			}
-			
-			
-			validRequest = reducedValidRequest;
-			
-			System.out.println(validRequest.get(1).toString());
-			Thread.sleep(1000000);
-		}
-		
-	    /**/
-				
+		 * 
+		 * if (start >= 0 && nbRequest >= 0) {
+		 * List<List<Object>> reducedValidRequest = new ArrayList<List<Object>>();
+		 * TreeMap<Long,List<Object>> rvr = new TreeMap<Long,List<Object>>();
+		 * List<Integer> randTimes = Interval.oneTo(nbRequest);
+		 * Collections.shuffle(randTimes);
+		 * for(int field=0;field<3;field++) {
+		 * reducedValidRequest.add(new ArrayList<>());
+		 * }
+		 * for(int time=0;time<nbRequest;time++) {
+		 * rvr.put((long)validRequest.get(0).get(time),Arrays.asList(validRequest.get(1)
+		 * .get(time),validRequest.get(2).get(time)));
+		 * }
+		 * for(long key:rvr.keySet()) {
+		 * System.out.println(key);
+		 * reducedValidRequest.get(0).add(key);
+		 * reducedValidRequest.get(1).add(rvr.get(key).get(0));
+		 * reducedValidRequest.get(2).add(rvr.get(key).get(1));
+		 * }
+		 * 
+		 * 
+		 * validRequest = reducedValidRequest;
+		 * 
+		 * System.out.println(validRequest.get(1).toString());
+		 * Thread.sleep(1000000);
+		 * }
+		 * 
+		 * /
+		 **/
+
 		nbRequest = Math.min(nbRequest, validRequest.get(0).size() - start);
 		if (start >= 0 && nbRequest > 0) {
 			List<List<Object>> reducedValidRequest = new ArrayList<List<Object>>();
@@ -351,14 +353,14 @@ public final class Generation {
 			}
 			validRequest = reducedValidRequest;
 		}
-		//*/
+		// */
 
 		// Calculating frequency distribution
 		List<Integer> nodeIds = new ArrayList<Integer>();
 		for (int nodeId = 1; nodeId <= numberNodes; nodeId++) {
 			nodeIds.add(nodeId);
 		}
-		Double[] repartNodes = TxtReader.calculateRepartNodes(numberNodes, typeRepart);
+		double[] repartNodes = TxtReader.calculateRepartNodes(numberNodes, typeRepart);
 		List<Pair<Integer, Double>> listValues = new ArrayList<>();
 		for (int nodeId : nodeIds) {
 			listValues.add(new Pair<Integer, Double>(nodeId, repartNodes[nodeId - 1]));
@@ -397,13 +399,13 @@ public final class Generation {
 
 			// Adding destination nodes
 			HashSet<Integer> dataNodeDestination = new HashSet<Integer>();
-			while (dataNodeDestination.size() < nNodesServingRequest) {
+			while (dataNodeDestination.size() < nbDataNodesPerRequest) {
 				dataNodeDestination.add(nodeDist.sample());
 			}
 			requestBuilder.addAllDataNodes(dataNodeDestination);
 
 			// TODO calculate data to transfer
-			
+
 			requestBuilder.setDataToTransfer(1);
 
 			// we don't have expectedDuration for this workload
@@ -610,6 +612,142 @@ public final class Generation {
 		return res;
 	}
 
+	// resource consumption going from client to web server
+	static final int clientToWS_mips = 300 * timeUnits / 10;
+	static final int clientToWS_iops = 1;
+	static final int clientToWS_ram = 1;// 500
+	static final int clientToWS_transferData = 1 * timeUnits;
+	// resource consumption going from ES to Web Server
+	static final int ESToWS_mips = 300 * timeUnits / 10;
+	static final int ESToWS_iops = 1;
+	static final int ESToWS_ram = 1;// 500
+	static final int ESToWS_transferData = 1 * timeUnits;
+
+	private static Component.Builder createWSComponent(String nodeId) {
+
+		// Component for WS
+		Component.Builder webServerBuilder = Component.newBuilder();
+		webServerBuilder.setComponentName("Web server").setComponentId("1").setIsLoadbalanced(false);
+
+		// Deployment for WS
+		Deployment.Builder deployment_webServer = Deployment.newBuilder();
+		deployment_webServer.setNodeId(nodeId);
+		webServerBuilder.setDeployment(deployment_webServer.build());
+
+		// Api paths WS
+		// path 1
+		String apiId = "1_1"; // Component ID, API ID
+		Component.Api.Builder webServerApi_1 = Component.Api.newBuilder();
+		webServerApi_1.setApiId(apiId);
+		webServerApi_1.setApiName(webServerBuilder.getComponentName() + "_" + apiId);
+		// resource consumption
+		webServerApi_1.setMips(clientToWS_mips);
+		webServerApi_1.setIops(clientToWS_iops);
+		webServerApi_1.setRam(clientToWS_ram);
+		webServerApi_1.setDataToTransfer(clientToWS_transferData);
+		// connect to next api
+		webServerApi_1.addNextComponentId("2");
+		webServerApi_1.addNextApiId("2_1");
+		webServerBuilder.addApis(webServerApi_1.build());
+
+		// path 2
+		apiId = "1_2"; // Component ID, API ID
+		Component.Api.Builder webServerApi_2 = Component.Api.newBuilder();
+		webServerApi_2.setApiId(apiId);
+		webServerApi_2.setApiName(webServerBuilder.getComponentName() + "_" + apiId);
+		// resource consumption
+		webServerApi_2.setMips(ESToWS_mips);
+		webServerApi_2.setIops(ESToWS_iops);
+		webServerApi_2.setRam(ESToWS_ram);
+		webServerApi_2.setDataToTransfer(ESToWS_transferData);
+		// connect to next api
+		// no add of next component
+		// no add of next api
+		webServerBuilder.addApis(webServerApi_2.build());
+
+		// create and add flavour
+		VeFlavour.Builder veFlavour_controlPlane = VeFlavour.newBuilder();
+		veFlavour_controlPlane.setCores(vmCores);
+		veFlavour_controlPlane.setMemory(vmMemory);
+		veFlavour_controlPlane.setStorage(vmStorage);
+		webServerBuilder.setFlavour(veFlavour_controlPlane.build());
+
+		return webServerBuilder;
+	}
+
+	// resource consumption going from web server to ES
+	static final int WSToES_mips = 300 * timeUnits / 10;
+	static final int WSToES_iops = 1;
+	static final int WSToES_ram = 200;// 500
+	static final int WSToES_transferData = 1 * timeUnits;
+	// resource consumption going from DataNode to ES
+	static final int DNToES_mips = 300 * timeUnits / 10;
+	static final int DNToES_iops = 1;
+	static final int DNToES_ram = 1;// 1000
+	static final int DNToES_transferData = 1 * timeUnits;
+
+	private static Component.Builder createESClientComponent(String nodeId, int nbDNs) {
+
+		/*
+		 * Component for ES client
+		 */
+		Component.Builder esClientBuilder = Component.newBuilder();
+		esClientBuilder.setComponentName("ES Client").setComponentId("2").setIsLoadbalanced(false);
+
+		/*
+		 * Deployment for ES client
+		 */
+		Deployment.Builder deployment_esClient = Deployment.newBuilder();
+		deployment_esClient.setNodeId(nodeId);
+		esClientBuilder.setDeployment(deployment_esClient.build());
+
+		/*
+		 * Api paths VM2
+		 */
+		// path 1
+		String apiId = "2_1"; // Component ID, API ID
+		Component.Api.Builder esClientApi_1 = Component.Api.newBuilder();
+		esClientApi_1.setApiId(apiId);
+		esClientApi_1.setApiName(esClientBuilder.getComponentName() + "_" + apiId);
+		// resource consumption
+		esClientApi_1.setMips(WSToES_mips);
+		esClientApi_1.setIops(WSToES_iops);
+		esClientApi_1.setRam(WSToES_ram);
+		esClientApi_1.setDataToTransfer(WSToES_transferData);
+		// connect to next api
+		for (int shard = 3; shard < 3 + nbDNs; shard++) {
+			esClientApi_1.addNextComponentId("" + shard);
+			esClientApi_1.addNextApiId(shard + "_1");
+		}
+
+		esClientBuilder.addApis(esClientApi_1.build());
+
+		// path 2
+		apiId = "2_2"; // Component ID, API ID
+		Component.Api.Builder esClientApi_7 = Component.Api.newBuilder();
+		esClientApi_7.setApiId(apiId);
+		esClientApi_7.setApiName(esClientBuilder.getComponentName() + "_" + apiId);
+		// resource consumption
+		esClientApi_7.setMips(DNToES_mips);
+		esClientApi_7.setIops(DNToES_iops);
+		esClientApi_7.setRam(DNToES_ram);
+		esClientApi_7.setDataToTransfer(DNToES_transferData);
+		// connect to next api
+		esClientApi_7.addNextComponentId("1");
+		esClientApi_7.addNextApiId("1_2");
+		esClientBuilder.addApis(esClientApi_7.build());
+
+		// create flavour
+		VeFlavour.Builder veFlavour_esClient = VeFlavour.newBuilder();
+		veFlavour_esClient.setCores(esClient_cores);
+		veFlavour_esClient.setMemory(esClient_memory);
+		veFlavour_esClient.setStorage(esClient_storage);
+
+		esClientBuilder.setFlavour(veFlavour_esClient.build());
+
+		return esClientBuilder;
+	}
+
 	// resource consumption going from ES to DataNode
 	static final int ESToDN_mips = 1 * timeUnits / 10;
 	static final int ESToDN_iops = 1;
@@ -732,141 +870,4 @@ public final class Generation {
 
 		return shard;
 	}
-
-	// resource consumption going from web server to ES
-	static final int WSToES_mips = 300 * timeUnits / 10;
-	static final int WSToES_iops = 1;
-	static final int WSToES_ram = 200;// 500
-	static final int WSToES_transferData = 1 * timeUnits;
-	// resource consumption going from DataNode to ES
-	static final int DNToES_mips = 300 * timeUnits / 10;
-	static final int DNToES_iops = 1;
-	static final int DNToES_ram = 1;// 1000
-	static final int DNToES_transferData = 1 * timeUnits;
-
-	private static Component.Builder createESClientComponent(String nodeId, int nbDNs) {
-
-		/*
-		 * Component for ES client
-		 */
-		Component.Builder esClientBuilder = Component.newBuilder();
-		esClientBuilder.setComponentName("ES Client").setComponentId("2").setIsLoadbalanced(false);
-
-		/*
-		 * Deployment for ES client
-		 */
-		Deployment.Builder deployment_esClient = Deployment.newBuilder();
-		deployment_esClient.setNodeId(nodeId);
-		esClientBuilder.setDeployment(deployment_esClient.build());
-
-		/*
-		 * Api paths VM2
-		 */
-		// path 1
-		String apiId = "2_1"; // Component ID, API ID
-		Component.Api.Builder esClientApi_1 = Component.Api.newBuilder();
-		esClientApi_1.setApiId(apiId);
-		esClientApi_1.setApiName(esClientBuilder.getComponentName() + "_" + apiId);
-		// resource consumption
-		esClientApi_1.setMips(WSToES_mips);
-		esClientApi_1.setIops(WSToES_iops);
-		esClientApi_1.setRam(WSToES_ram);
-		esClientApi_1.setDataToTransfer(WSToES_transferData);
-		// connect to next api
-		for (int shard = 3; shard < 3 + nbDNs; shard++) {
-			esClientApi_1.addNextComponentId("" + shard);
-			esClientApi_1.addNextApiId(shard + "_1");
-		}
-
-		esClientBuilder.addApis(esClientApi_1.build());
-
-		// path 2
-		apiId = "2_2"; // Component ID, API ID
-		Component.Api.Builder esClientApi_7 = Component.Api.newBuilder();
-		esClientApi_7.setApiId(apiId);
-		esClientApi_7.setApiName(esClientBuilder.getComponentName() + "_" + apiId);
-		// resource consumption
-		esClientApi_7.setMips(DNToES_mips);
-		esClientApi_7.setIops(DNToES_iops);
-		esClientApi_7.setRam(DNToES_ram);
-		esClientApi_7.setDataToTransfer(DNToES_transferData);
-		// connect to next api
-		esClientApi_7.addNextComponentId("1");
-		esClientApi_7.addNextApiId("1_2");
-		esClientBuilder.addApis(esClientApi_7.build());
-
-		// create flavour
-		VeFlavour.Builder veFlavour_esClient = VeFlavour.newBuilder();
-		veFlavour_esClient.setCores(esClient_cores);
-		veFlavour_esClient.setMemory(esClient_memory);
-		veFlavour_esClient.setStorage(esClient_storage);
-
-		esClientBuilder.setFlavour(veFlavour_esClient.build());
-
-		return esClientBuilder;
-	}
-
-	// resource consumption going from client to web server
-	static final int clientToWS_mips = 300 * timeUnits / 10;
-	static final int clientToWS_iops = 1;
-	static final int clientToWS_ram = 200;// 500
-	static final int clientToWS_transferData = 1 * timeUnits;
-	// resource consumption going from ES to Web Server
-	static final int ESToWS_mips = 300 * timeUnits / 10;
-	static final int ESToWS_iops = 1;
-	static final int ESToWS_ram = 1;// 500
-	static final int ESToWS_transferData = 1 * timeUnits;
-
-	private static Component.Builder createWSComponent(String nodeId) {
-
-		// Component for WS
-		Component.Builder webServerBuilder = Component.newBuilder();
-		webServerBuilder.setComponentName("Web server").setComponentId("1").setIsLoadbalanced(false);
-
-		// Deployment for WS
-		Deployment.Builder deployment_webServer = Deployment.newBuilder();
-		deployment_webServer.setNodeId(nodeId);
-		webServerBuilder.setDeployment(deployment_webServer.build());
-
-		// Api paths WS
-		// path 1
-		String apiId = "1_1"; // Component ID, API ID
-		Component.Api.Builder webServerApi_1 = Component.Api.newBuilder();
-		webServerApi_1.setApiId(apiId);
-		webServerApi_1.setApiName(webServerBuilder.getComponentName() + "_" + apiId);
-		// resource consumption
-		webServerApi_1.setMips(clientToWS_mips);
-		webServerApi_1.setIops(clientToWS_iops);
-		webServerApi_1.setRam(clientToWS_ram);
-		webServerApi_1.setDataToTransfer(clientToWS_transferData);
-		// connect to next api
-		webServerApi_1.addNextComponentId("2");
-		webServerApi_1.addNextApiId("2_1");
-		webServerBuilder.addApis(webServerApi_1.build());
-
-		// path 2
-		apiId = "1_2"; // Component ID, API ID
-		Component.Api.Builder webServerApi_2 = Component.Api.newBuilder();
-		webServerApi_2.setApiId(apiId);
-		webServerApi_2.setApiName(webServerBuilder.getComponentName() + "_" + apiId);
-		// resource consumption
-		webServerApi_2.setMips(ESToWS_mips);
-		webServerApi_2.setIops(ESToWS_iops);
-		webServerApi_2.setRam(ESToWS_ram);
-		webServerApi_2.setDataToTransfer(ESToWS_transferData);
-		// connect to next api
-		// no add of next component
-		// no add of next api
-		webServerBuilder.addApis(webServerApi_2.build());
-
-		// create and add flavour
-		VeFlavour.Builder veFlavour_controlPlane = VeFlavour.newBuilder();
-		veFlavour_controlPlane.setCores(vmCores);
-		veFlavour_controlPlane.setMemory(vmMemory);
-		veFlavour_controlPlane.setStorage(vmStorage);
-		webServerBuilder.setFlavour(veFlavour_controlPlane.build());
-
-		return webServerBuilder;
-	}
-
 }
