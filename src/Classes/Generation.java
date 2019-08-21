@@ -18,6 +18,8 @@ import org.apache.commons.math3.util.Pair;
 
 import org.eclipse.collections.impl.list.Interval;
 
+import Classes.Parameters.path;
+import Classes.Parameters.typeParam;
 import Classes.TxtReader.typeData;
 import Main.Launcher;
 import eu.recap.sim.RecapSim;
@@ -44,7 +46,6 @@ import eu.recap.sim.models.WorkloadModel.Workload;
  * This class holds useful methods to generate the objects necessary for the
  * modelisation
  */
-@SuppressWarnings("unused")
 public final class Generation {
 
 	/**
@@ -222,7 +223,8 @@ public final class Generation {
 			request.setApplicationId(appLandscape.getApplicationsList().get(0).getApplicationId());
 
 			// TODO MIPS data node should depend on where the request is sent
-			request.setMipsDataNodes(DNToES_mips);
+			int mi = (int)Parameters.getParam(typeParam.mips, path.DNToES);
+			request.setMipsDataNodes(mi);
 
 			/*
 			 * Data nodes destinations for the request
@@ -366,7 +368,7 @@ public final class Generation {
 			requestBuilder.setApiId("1_1");
 			// TODO multiple applications
 			requestBuilder.setApplicationId(appLandscape.getApplications(0).getApplicationId());
-			requestBuilder.setTime(date - dateInitialRequest);//in milliseconds
+			requestBuilder.setTime(date - dateInitialRequest);// in milliseconds
 			requestBuilder.setType(type);
 
 			// Adding destination nodes
@@ -584,17 +586,6 @@ public final class Generation {
 		return res;
 	}
 
-	// resource consumption going from client to web server
-	static final int clientToWS_mips = 300 * timeUnits / 10;
-	static final int clientToWS_iops = 1;
-	static final double clientToWS_ram = 1;// 500
-	static final int clientToWS_transferData = 1 * timeUnits;
-	// resource consumption going from ES to Web Server
-	static final int ESToWS_mips = 300 * timeUnits / 10;
-	static final int ESToWS_iops = 1;
-	static final double ESToWS_ram = 1;// 500
-	static final int ESToWS_transferData = 1 * timeUnits;
-
 	private static Component.Builder createWSComponent(String nodeId) {
 
 		// Component for WS
@@ -613,10 +604,7 @@ public final class Generation {
 		webServerApi_1.setApiId(apiId);
 		webServerApi_1.setApiName(webServerBuilder.getComponentName() + "_" + apiId);
 		// resource consumption
-		webServerApi_1.setMips(clientToWS_mips);
-		webServerApi_1.setIops(clientToWS_iops);
-		webServerApi_1.setRam(clientToWS_ram);
-		webServerApi_1.setDataToTransfer(clientToWS_transferData);
+		webServerApi_1 = Parameters.setParamsApi(webServerApi_1, path.clientToWS);
 		// connect to next api
 		webServerApi_1.addNextComponentId("2");
 		webServerApi_1.addNextApiId("2_1");
@@ -628,10 +616,7 @@ public final class Generation {
 		webServerApi_2.setApiId(apiId);
 		webServerApi_2.setApiName(webServerBuilder.getComponentName() + "_" + apiId);
 		// resource consumption
-		webServerApi_2.setMips(ESToWS_mips);
-		webServerApi_2.setIops(ESToWS_iops);
-		webServerApi_2.setRam(ESToWS_ram);
-		webServerApi_2.setDataToTransfer(ESToWS_transferData);
+		webServerApi_2 = Parameters.setParamsApi(webServerApi_1, path.ESToWS);
 		// connect to next api
 		// no add of next component
 		// no add of next api
@@ -646,17 +631,6 @@ public final class Generation {
 
 		return webServerBuilder;
 	}
-
-	// resource consumption going from web server to ES
-	static final int WSToES_mips = 300 * timeUnits / 10;
-	static final int WSToES_iops = 1;
-	static final double WSToES_ram = 200;// 500
-	static final int WSToES_transferData = 1 * timeUnits;
-	// resource consumption going from DataNode to ES
-	static final int DNToES_mips = 300 * timeUnits / 10;
-	static final int DNToES_iops = 1;
-	static final double DNToES_ram = 1;// 1000
-	static final int DNToES_transferData = 1 * timeUnits;
 
 	private static Component.Builder createESClientComponent(String nodeId, int nbDNs) {
 
@@ -682,10 +656,7 @@ public final class Generation {
 		esClientApi_1.setApiId(apiId);
 		esClientApi_1.setApiName(esClientBuilder.getComponentName() + "_" + apiId);
 		// resource consumption
-		esClientApi_1.setMips(WSToES_mips);
-		esClientApi_1.setIops(WSToES_iops);
-		esClientApi_1.setRam(WSToES_ram);
-		esClientApi_1.setDataToTransfer(WSToES_transferData);
+		esClientApi_1 = Parameters.setParamsApi(esClientApi_1, path.WSToES);
 		// connect to next api
 		for (int shard = 3; shard < 3 + nbDNs; shard++) {
 			esClientApi_1.addNextComponentId("" + shard);
@@ -700,10 +671,7 @@ public final class Generation {
 		esClientApi_7.setApiId(apiId);
 		esClientApi_7.setApiName(esClientBuilder.getComponentName() + "_" + apiId);
 		// resource consumption
-		esClientApi_7.setMips(DNToES_mips);
-		esClientApi_7.setIops(DNToES_iops);
-		esClientApi_7.setRam(DNToES_ram);
-		esClientApi_7.setDataToTransfer(DNToES_transferData);
+		esClientApi_7 = Parameters.setParamsApi(esClientApi_7, path.DNToES);
 		// connect to next api
 		esClientApi_7.addNextComponentId("1");
 		esClientApi_7.addNextApiId("1_2");
@@ -719,17 +687,6 @@ public final class Generation {
 
 		return esClientBuilder;
 	}
-
-	// resource consumption going from ES to DataNode
-	static final int ESToDN_mips = 1 * timeUnits / 10;
-	static final int ESToDN_iops = 1;
-	static final double ESToDN_ram = 1; // 2000
-	static final int ESToDN_transferData = 1 * timeUnits;
-	// resource consumption from datanode to datanode
-	static final int DNToDN_mips = 300 * timeUnits / 10;
-	static final int DNToDN_iops = 1;
-	static final double DNToDN_ram = 1;// 1000
-	static final int DNToDN_transferData = 1 * timeUnits;
 
 	private static Component.Builder createDNComponent(String componentName, String componentId, String nodeId,
 			int nbDNs) {
@@ -750,10 +707,7 @@ public final class Generation {
 		dnApiBuilder_1.setApiId(apiId);
 		dnApiBuilder_1.setApiName(componentName + "_" + apiId);
 		// resource consumption
-		dnApiBuilder_1.setMips(ESToDN_mips);
-		dnApiBuilder_1.setIops(ESToDN_iops);
-		dnApiBuilder_1.setRam(ESToDN_ram);
-		dnApiBuilder_1.setDataToTransfer(ESToDN_transferData);
+		dnApiBuilder_1 = Parameters.setParamsApi(dnApiBuilder_1, path.ESToDN);
 		// connect to next api
 		/*
 		 * From a DataNode, the next path is either going back to ES (search or failed
@@ -785,10 +739,7 @@ public final class Generation {
 			dnApiBuilder_2.setApiId(apiId);
 			dnApiBuilder_2.setApiName(componentName + "_" + apiId);
 			// resource consumption
-			dnApiBuilder_2.setMips(DNToDN_mips);
-			dnApiBuilder_2.setIops(DNToDN_iops);
-			dnApiBuilder_2.setRam(DNToDN_ram);
-			dnApiBuilder_2.setDataToTransfer(DNToDN_transferData);
+			dnApiBuilder_2 = Parameters.setParamsApi(dnApiBuilder_2, path.ESToDN);
 			// adding ES as next component
 			dnApiBuilder_2.addNextComponentId("2");
 			dnApiBuilder_2.addNextApiId("2_2");
@@ -824,10 +775,7 @@ public final class Generation {
 		shardApi_1.setApiId(componentId + "_1");
 		shardApi_1.setApiName(shard.getComponentName() + "_" + componentId + "_1");
 		// resource consumption
-		shardApi_1.setMips(ESToDN_mips);
-		shardApi_1.setIops(ESToDN_iops);
-		shardApi_1.setRam(ESToDN_ram);
-		shardApi_1.setDataToTransfer(ESToDN_transferData);
+		shardApi_1 = Parameters.setParamsApi(shardApi_1, path.ESToDN);
 		// connect to next api TO-DO
 		shardApi_1.addNextComponentId("2");
 		shardApi_1.addNextApiId("2_2");
