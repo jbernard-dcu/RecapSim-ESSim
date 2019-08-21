@@ -46,12 +46,12 @@ public final class OldMethods {
 			appBuilder.setApplicationId("" + appCounter).setApplicationName("" + appCounter);
 
 			// Component for WS
-			Component.Builder webServerBuilder = createWSComponent(nodeIds.get(nodesCounter));
+			Component.Builder webServerBuilder = Generation.createWSComponent(nodeIds.get(nodesCounter));
 			nodesCounter = (nodesCounter == indexNmberOfNodes) ? 0 : nodesCounter + 1;
 			appBuilder.addComponents(webServerBuilder.build());
 
 			// Component for ES client
-			Component.Builder esClientBuilder = createESClientComponent(nodeIds.get(nodesCounter), nbDNs);
+			Component.Builder esClientBuilder = Generation.createESClientComponent(nodeIds.get(nodesCounter), nbDNs);
 			nodesCounter = (nodesCounter == indexNmberOfNodes) ? 0 : nodesCounter + 1;
 			appBuilder.addComponents(esClientBuilder.build());
 
@@ -60,7 +60,7 @@ public final class OldMethods {
 			 */
 			for (int dnId = 3; dnId < 3 + nbDNs; dnId++) {
 
-				Component.Builder dnBuilder = createDNComponent("DN_" + (dnId - 2), "" + dnId,
+				Component.Builder dnBuilder = Generation.createDNComponent("DN_" + (dnId - 2), "" + dnId,
 						nodeIds.get(nodesCounter), nbDNs);
 
 				nodesCounter = (nodesCounter == indexNmberOfNodes) ? 0 : nodesCounter + 1;
@@ -75,58 +75,6 @@ public final class OldMethods {
 		System.out.println("ApplicationLandscape generated:" + (System.currentTimeMillis() - startTime) + "ms");
 
 		return applicationLandscapeBuilder.build();
-	}
-
-	/**
-	 * DN----------DN
-	 * | |
-	 * DN----...---DN
-	 */
-	public static ApplicationLandscape GenerateAppLandscape2(int appQty, int nbComponents,
-			Infrastructure infrastructure) {
-
-		long startTime = System.currentTimeMillis();
-
-		ApplicationLandscape.Builder appLandscapeBuilder = ApplicationLandscape.newBuilder();
-		appLandscapeBuilder.setNotes("Network application landscape");
-
-		// List of available nodes
-		List<String> nodeIds = new ArrayList<String>();
-		for (ResourceSite site : infrastructure.getSitesList()) {
-			for (Node node : site.getNodesList()) {
-				nodeIds.add(node.getId());
-			}
-		}
-		int indexNmberOfNodes = nodeIds.size() - 1;
-
-		int nodesCounter = 0;
-
-		for (int appCounter = 0; appCounter < appQty; appCounter++) {
-
-			// New Application builder
-			Application.Builder appBuilder = Application.newBuilder();
-			appBuilder.setApplicationId("" + appCounter).setApplicationName("" + appCounter);
-
-			// Creating, deploying and building shards
-			// "shards" go from 1 to NB_PRIMARYSHARDS. shard is the component id in fact
-			// We do not consider replication for now
-			for (int componentId = 1; componentId <= nbComponents; componentId++) {
-
-				Component.Builder componentBuilder = createComponent("Shard_" + componentId, "" + componentId,
-						nodeIds.get(nodesCounter), nodeIds.size());
-
-				nodesCounter = (nodesCounter == indexNmberOfNodes) ? 0 : nodesCounter + 1;
-
-				appBuilder.addComponents(componentBuilder.build());
-			}
-
-			appLandscapeBuilder.addApplications(appBuilder.build());
-
-		}
-
-		System.out.println("ApplicationLandscape generated:" + (System.currentTimeMillis() - startTime) + "ms");
-
-		return appLandscapeBuilder.build();
 	}
 
 	/**

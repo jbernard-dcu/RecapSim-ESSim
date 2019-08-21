@@ -580,7 +580,7 @@ public final class Generation {
 		return res;
 	}
 
-	private static Component.Builder createWSComponent(String nodeId) {
+	static Component.Builder createWSComponent(String nodeId) {
 
 		// Component for WS
 		Component.Builder webServerBuilder = Component.newBuilder();
@@ -626,7 +626,7 @@ public final class Generation {
 		return webServerBuilder;
 	}
 
-	private static Component.Builder createESClientComponent(String nodeId, int nbDNs) {
+	static Component.Builder createESClientComponent(String nodeId, int nbDNs) {
 
 		/*
 		 * Component for ES client
@@ -682,7 +682,7 @@ public final class Generation {
 		return esClientBuilder;
 	}
 
-	private static Component.Builder createDNComponent(String componentName, String componentId, String nodeId,
+	static Component.Builder createDNComponent(String componentName, String componentId, String nodeId,
 			int nbDNs) {
 
 		// Component for DN

@@ -15,7 +15,7 @@ public final class Parameters {
 
 	// resource consumption going from client to web server
 	static final int clientToWS_mips = 300 * timeUnits / 10;
-	static final int clientToWS_iops = 11;
+	static final int clientToWS_iops = 1;
 	static final double clientToWS_ram = 1;// 500
 	static final int clientToWS_transferData = 1 * timeUnits;
 	// resource consumption going from ES to Web Server
@@ -27,7 +27,7 @@ public final class Parameters {
 	// resource consumption going from web server to ES
 	static final int WSToES_mips = 300 * timeUnits / 10;
 	static final int WSToES_iops = 1;
-	static final double WSToES_ram = 200;// 500
+	static final double WSToES_ram = 1;// 500
 	static final int WSToES_transferData = 1 * timeUnits;
 	// resource consumption going from DataNode to ES
 	static final int DNToES_mips = 300 * timeUnits / 10;
@@ -55,41 +55,41 @@ public final class Parameters {
 		clientToWS, ESToWS, WSToES, DNToES, ESToDN, DNToDN
 	}
 
-	final static List<Pair<path, typeParam>> keySet = buildKeySet();
-	final static Map<Pair<path, typeParam>, Number> mapParams = buildMapParam();
+	final static List<Pair<path, typeParam>> apiParamKeyset = buildApiParamKeyset();
+	final static Map<Pair<path, typeParam>, Number> apiParam = buildApiParamMap();
 
-	private static Map<Pair<path, typeParam>, Number> buildMapParam() {
+	private static Map<Pair<path, typeParam>, Number> buildApiParamMap() {
 		Map<Pair<path, typeParam>, Number> mapParam = new HashMap<Pair<path, typeParam>, Number>();
 
-		mapParam.put(keySet.get(0), clientToWS_mips);
-		mapParam.put(keySet.get(1), clientToWS_iops);
-		mapParam.put(keySet.get(2), clientToWS_ram);
-		mapParam.put(keySet.get(3), clientToWS_transferData);
-		mapParam.put(keySet.get(4), ESToWS_mips);
-		mapParam.put(keySet.get(5), ESToWS_iops);
-		mapParam.put(keySet.get(6), ESToWS_ram);
-		mapParam.put(keySet.get(7), ESToWS_transferData);
-		mapParam.put(keySet.get(8), WSToES_mips);
-		mapParam.put(keySet.get(9), WSToES_iops);
-		mapParam.put(keySet.get(10), WSToES_ram);
-		mapParam.put(keySet.get(11), WSToES_transferData);
-		mapParam.put(keySet.get(12), DNToES_mips);
-		mapParam.put(keySet.get(13), DNToES_iops);
-		mapParam.put(keySet.get(14), DNToES_ram);
-		mapParam.put(keySet.get(15), DNToES_transferData);
-		mapParam.put(keySet.get(16), ESToDN_mips);
-		mapParam.put(keySet.get(17), ESToDN_iops);
-		mapParam.put(keySet.get(18), ESToDN_ram);
-		mapParam.put(keySet.get(19), ESToDN_transferData);
-		mapParam.put(keySet.get(20), DNToDN_mips);
-		mapParam.put(keySet.get(21), DNToDN_iops);
-		mapParam.put(keySet.get(22), DNToDN_ram);
-		mapParam.put(keySet.get(23), DNToDN_transferData);
+		mapParam.put(apiParamKeyset.get(0), clientToWS_mips);
+		mapParam.put(apiParamKeyset.get(1), clientToWS_iops);
+		mapParam.put(apiParamKeyset.get(2), clientToWS_ram);
+		mapParam.put(apiParamKeyset.get(3), clientToWS_transferData);
+		mapParam.put(apiParamKeyset.get(4), ESToWS_mips);
+		mapParam.put(apiParamKeyset.get(5), ESToWS_iops);
+		mapParam.put(apiParamKeyset.get(6), ESToWS_ram);
+		mapParam.put(apiParamKeyset.get(7), ESToWS_transferData);
+		mapParam.put(apiParamKeyset.get(8), WSToES_mips);
+		mapParam.put(apiParamKeyset.get(9), WSToES_iops);
+		mapParam.put(apiParamKeyset.get(10), WSToES_ram);
+		mapParam.put(apiParamKeyset.get(11), WSToES_transferData);
+		mapParam.put(apiParamKeyset.get(12), DNToES_mips);
+		mapParam.put(apiParamKeyset.get(13), DNToES_iops);
+		mapParam.put(apiParamKeyset.get(14), DNToES_ram);
+		mapParam.put(apiParamKeyset.get(15), DNToES_transferData);
+		mapParam.put(apiParamKeyset.get(16), ESToDN_mips);
+		mapParam.put(apiParamKeyset.get(17), ESToDN_iops);
+		mapParam.put(apiParamKeyset.get(18), ESToDN_ram);
+		mapParam.put(apiParamKeyset.get(19), ESToDN_transferData);
+		mapParam.put(apiParamKeyset.get(20), DNToDN_mips);
+		mapParam.put(apiParamKeyset.get(21), DNToDN_iops);
+		mapParam.put(apiParamKeyset.get(22), DNToDN_ram);
+		mapParam.put(apiParamKeyset.get(23), DNToDN_transferData);
 
 		return mapParam;
 	}
 
-	private static List<Pair<path, typeParam>> buildKeySet() {
+	private static List<Pair<path, typeParam>> buildApiParamKeyset() {
 		List<Pair<path, typeParam>> res = new ArrayList<>();
 		for (path path : path.class.getEnumConstants()) {
 			for (typeParam type : typeParam.class.getEnumConstants()) {
@@ -107,13 +107,11 @@ public final class Parameters {
 	 * @return
 	 */
 	private static Pair<path, typeParam> getKey(path path, typeParam type) {
-		int i = 0;
-		Pair<path, typeParam> key = keySet.get(0);
-		while (key.getFirst() != path && key.getSecond() != type) {
-			key = keySet.get(i);
-			i++;
+		for (Pair<path, typeParam> key : apiParamKeyset) {
+			if (key.getKey() == path && key.getValue() == type)
+				return key;
 		}
-		return key;
+		return null;
 	}
 
 	/**
@@ -124,7 +122,7 @@ public final class Parameters {
 	 * @return
 	 */
 	public static Number getParam(typeParam type, path path) {
-		return mapParams.get(getKey(path, type));
+		return apiParam.get(getKey(path, type));
 	}
 
 	/**
@@ -136,7 +134,7 @@ public final class Parameters {
 	public static List<Number> getListByType(typeParam type) {
 		List<Number> res = new ArrayList<Number>();
 		for (path path : path.class.getEnumConstants()) {
-			res.add(mapParams.get(getKey(path, type)));
+			res.add(apiParam.get(getKey(path, type)));
 		}
 		return res;
 	}
@@ -150,7 +148,7 @@ public final class Parameters {
 	public static List<Number> getListByPath(path path) {
 		List<Number> res = new ArrayList<Number>();
 		for (typeParam type : typeParam.class.getEnumConstants()) {
-			res.add(mapParams.get(getKey(path, type)));
+			res.add(apiParam.get(getKey(path, type)));
 		}
 		return res;
 	}

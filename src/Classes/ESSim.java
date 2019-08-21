@@ -491,6 +491,87 @@ public class ESSim extends RecapSim {
 		}
 	}
 
+	/**
+	 * Shows TABLE RAM utilization of all VMs into a given Datacenter.
+	 */
+	@Override
+	protected void showTableRamUtilizationForAllVms(final double simulationFinishTime, List<IRecapVe> veList) {
+
+		TreeMap<Double, List<Double>> ramUtilisation = new TreeMap<Double, List<Double>>();
+
+		for (Vm vm : veList) {
+			for (Map.Entry<Double, Double> entry : allVmsRamUtilizationHistory.get(vm).entrySet()) {
+				final double time = entry.getKey();
+				final double vmCpuUsage = entry.getValue() * 100;
+				if (!ramUtilisation.containsKey(time)) {
+					ArrayList<Double> zeros = new ArrayList<Double>();
+					for (int i = 0; i < veList.size(); i++) {
+						zeros.add(-1.);
+					}
+					ramUtilisation.put(time, zeros);
+				}
+
+				ramUtilisation.get(time).set((int) vm.getId(), vmCpuUsage);
+			}
+		}
+
+		System.out.println("/*********************************/");
+		System.out.println(" RAM Utilisation");
+		System.out.println("/*********************************/");
+		System.out.print("Time");
+		for (int i = 0; i < veList.size(); i++) {
+			System.out.print("\tVM" + i);
+		}
+		System.out.println("");
+
+		// continue printing previous CPU utilisation of unchanged
+		// start at zero
+		Double previousTime = 0.0;
+		List<Double> previousValues = new ArrayList<Double>();
+		for (int v = 0; v < veList.size(); v++) {
+			previousValues.add(0.);
+		}
+
+		for (Map.Entry<Double, List<Double>> entry : ramUtilisation.entrySet()) {
+
+			// print zero usage of cpu if waited too long
+			if ((entry.getKey() / timeUnits - previousTime) > 20) {
+
+				// print next time
+				System.out.printf("%6.5f", previousTime + 0.001);
+				List<Double> currentValues = entry.getValue();
+				for (int v = 0; v < currentValues.size(); v++) {
+
+					System.out.printf("\t%6.3f", 0.0);
+
+				}
+				System.out.println("");
+
+				// print previous time
+				System.out.printf("%6.5f", entry.getKey() / timeUnits - 0.001);
+				for (int v = 0; v < currentValues.size(); v++) {
+
+					System.out.printf("\t%6.3f", 0.0);
+
+				}
+				System.out.println("");
+			}
+
+			System.out.printf("%6.5f", entry.getKey() / timeUnits);
+
+			List<Double> currentValues = entry.getValue();
+			for (int v = 0; v < currentValues.size(); v++) {
+				if (currentValues.get(v) == -1) {
+					// currentValues.set(v, previousValues.get(v));
+				}
+
+				System.out.printf("\t%6.3f", currentValues.get(v));
+			}
+			System.out.println("");
+			previousValues = currentValues;
+			previousTime = entry.getKey() / timeUnits;
+		}
+	}
 	//////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////// ADDITIONAL METHODS
 	//////////////////////////////////////////////////////////////////////////////////////////
