@@ -3,20 +3,14 @@ package Classes;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
-import java.util.TreeMap;
 
 import org.apache.commons.math3.distribution.EnumeratedDistribution;
 import org.apache.commons.math3.distribution.ExponentialDistribution;
 import org.apache.commons.math3.util.Pair;
-
-import org.eclipse.collections.impl.list.Interval;
 
 import Classes.Parameters.path;
 import Classes.Parameters.typeParam;
@@ -73,9 +67,9 @@ public final class Generation {
 	static final int vmStorage = 70_000;
 
 	/* ES client */
-	static int esClient_cores = 8;
-	static int esClient_memory = 8_000;
-	static int esClient_storage = 20_000;
+	static final int esClient_cores = 8;
+	static final int esClient_memory = 8_000;
+	static final int esClient_storage = 20_000;
 
 	/* Hosts */
 	static final int[][] cpuFrequency = initSameValue(numberSites, numberNodesPerSite, 3000); // MIPS or 2.6 GHz
@@ -223,7 +217,7 @@ public final class Generation {
 			request.setApplicationId(appLandscape.getApplicationsList().get(0).getApplicationId());
 
 			// TODO MIPS data node should depend on where the request is sent
-			int mi = (int)Parameters.getParam(typeParam.mips, path.DNToES);
+			int mi = (int) Parameters.getParam(typeParam.mips, path.DNToES);
 			request.setMipsDataNodes(mi);
 
 			/*
@@ -616,7 +610,7 @@ public final class Generation {
 		webServerApi_2.setApiId(apiId);
 		webServerApi_2.setApiName(webServerBuilder.getComponentName() + "_" + apiId);
 		// resource consumption
-		webServerApi_2 = Parameters.setParamsApi(webServerApi_1, path.ESToWS);
+		webServerApi_2 = Parameters.setParamsApi(webServerApi_2, path.ESToWS);
 		// connect to next api
 		// no add of next component
 		// no add of next api
