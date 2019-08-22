@@ -94,7 +94,7 @@ public class Launcher {
 		int nbRequest = 5;
 		int start = 10000;
 
-		Workload workload = Generation.GenerateYCSBWorkload(NB_PRIMARYSHARDS, appLandscape, start, nbRequest);
+		Workload workload = Generation.GenerateYCSBWorkload(appLandscape, start, nbRequest);
 		// Workload workload = Generation.GenerateSyntheticWorkload(termDist,
 		// NB_TERMSET, NB_REQUEST, appLandscape,
 		// shardBase);

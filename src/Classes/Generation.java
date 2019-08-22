@@ -80,7 +80,7 @@ public final class Generation {
 
 	// Repartition of requests between data nodes for CPU values
 	static double[] repartNodes = TxtReader.calculateRepartNodes(nbDataNodes, typeData.CpuLoad);
-	
+
 	int randNbDataNodesPerRequest = Launcher.randGint(nbDataNodes / 2., nbDataNodes / 6., 0, nbDataNodes);
 	static int nbDataNodesPerRequest = 6;
 
@@ -299,13 +299,13 @@ public final class Generation {
 	 *                    workload is reduced to <code>nbRequest</code> requests
 	 * @throws InterruptedException
 	 */
-	public static Workload GenerateYCSBWorkload(int nbDNs, ApplicationLandscape appLandscape, int start,
-			int nbRequest) throws FileNotFoundException, InterruptedException {
+	public static Workload GenerateYCSBWorkload(ApplicationLandscape appLandscape, int start, int nbRequest)
+			throws FileNotFoundException, InterruptedException {
 
 		long startTime = System.currentTimeMillis();
 
 		// Reading input file
-		List<List<Object>> validRequest = TxtReader.mergeWorkloadsSimple();
+		List<List<Object>> validRequest = TxtReader.getAllRequestsFromFile(nbDataNodes);
 
 		// reducing the requestSet if necessary
 
@@ -329,7 +329,7 @@ public final class Generation {
 		for (int nodeId = 1; nodeId <= nbDataNodes; nodeId++) {
 			nodeIds.add(nodeId);
 		}
-		
+
 		List<Pair<Integer, Double>> listValues = new ArrayList<>();
 		for (int nodeId : nodeIds) {
 			listValues.add(new Pair<Integer, Double>(nodeId, repartNodes[nodeId - 1]));
@@ -444,13 +444,13 @@ public final class Generation {
 			for (int dnId = 3; dnId < 3 + nbDNs; dnId++) {
 
 				// Topology #1 : non-interconnected datanodes
-				Component.Builder dnBuilder = createShardComponent("Shard_" + (dnId - 2), "" + dnId,
-						nodeIds.get(nodesCounter));
+				// Component.Builder dnBuilder = createShardComponent("Shard_" + (dnId - 2), ""
+				// + dnId,
+				// nodeIds.get(nodesCounter));
 
 				// Topology #2 : interconnected datanodes
-				// Component.Builder dnBuilder = createDNComponent("DN_" + (dnId - 2), "" +
-				// dnId,
-				// nodeIds.get(nodesCounter), nbDNs);
+				Component.Builder dnBuilder = createDNComponent("DN_" + (dnId - 2), "" + dnId,
+						nodeIds.get(nodesCounter), nbDNs);
 
 				nodesCounter = (nodesCounter == indexNmberOfNodes) ? 0 : nodesCounter + 1;
 

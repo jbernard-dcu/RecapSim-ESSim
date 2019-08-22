@@ -1,10 +1,8 @@
 package Classes;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileReader;
-import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -19,6 +17,14 @@ import org.apache.commons.math3.distribution.LogNormalDistribution;
 import Distribution.LogNormalFunc;
 
 public class TxtReader {
+
+	public static void main(String[] args) {
+		histogramFrequencyDist(9, typeData.NetworkReceived, 122);
+	}
+
+	public enum typeData {
+		CpuLoad, DiskIOReads, DiskIOWrites, MemoryUsage, NetworkReceived, NetworkSent
+	}
 
 	/**
 	 * Calculates the average weights of operations of each type, based on the
@@ -63,20 +69,12 @@ public class TxtReader {
 	 * 
 	 * @throws InterruptedException
 	 */
-	@SuppressWarnings("unchecked")
 	public static double[] calculateRepartNodes(int nbNodes, typeData type) {
 
 		int[] vms = getMonitoringVmsList(nbNodes);
 
 		// getting values
-		List<List<Double>> cpuLoads = new ArrayList<List<Double>>();
-		for (int vm : vms) {
-			List<Double> add = (List<Double>) (List<?>) readMonitoring(nbNodes, type, vm).get(2);
-
-			if (vm == 111)
-				add = add.subList(10, add.size()); // removing the 10 first values of VM111 to align timestamps
-			cpuLoads.add(add);
-		}
+		List<List<Double>> cpuLoads = getValues(nbNodes, type, vms);
 
 		// calculating normalized values
 		List<List<Double>> normCpuLoads = new ArrayList<List<Double>>();
@@ -91,7 +89,7 @@ public class TxtReader {
 					sum += cpuLoads.get(vm_bis).get(time);
 				}
 
-				add.add(cpuLoads.get(vm).get(time) * ((sum != 0) ? 1 / sum : 1));
+				add.add(cpuLoads.get(vm).get(time) * ((sum == 0) ? 1 : 1 / sum));
 			}
 			normCpuLoads.add(add);
 		}
@@ -112,6 +110,14 @@ public class TxtReader {
 
 	}
 
+	/**
+	 * return a double[] of size nbNodes (number of VMs) containing the average
+	 * values of each VM calculated from the specified monitoring file
+	 * 
+	 * @param nbNodes
+	 * @param type
+	 * @return
+	 */
 	public static double[] getAvgValues(int nbNodes, typeData type) {
 
 		int[] vms = getMonitoringVmsList(nbNodes);
@@ -135,97 +141,49 @@ public class TxtReader {
 
 		int[] vms = getMonitoringVmsList(nbNodes);
 
-		List<List<Double>> cpuLoads = getValues(nbNodes, type, vms);
+		List<List<Double>> values = getValues(nbNodes, type, vms);
 
 		double[] stds = new double[vms.length];
 		for (int vm = 0; vm < vms.length; vm++) {
-			stds[vm] = (Collections.max(cpuLoads.get(vm)) - Collections.min(cpuLoads.get(vm))) / 4.;
+			stds[vm] = (Collections.max(values.get(vm)) - Collections.min(values.get(vm))) / 4.;
 		}
 
 		return stds;
 	}
 
-	public static int[][] initFromSource(String filepath, String choice) {
-		try {
-			FileReader fr = new FileReader(new File(filepath));
-			BufferedReader br = new BufferedReader(fr);
-
-			String line = br.readLine();
-			int NB_SITES = Integer.valueOf(getWord(line, line.indexOf(" = ") + 3, "?"));
-			line = br.readLine();
-			int NB_NODES = Integer.valueOf(getWord(line, line.indexOf(" = ") + 3, "?"));
-
-			int[][] init = new int[NB_SITES][NB_NODES];
-
-			int i = 0;
-			int j = 0;
-			while ((line = br.readLine()) != null) {
-
-				if (line.startsWith("nSite"))
-					i = Integer.valueOf(getWord(line, line.indexOf(" = ") + 3, "?"));
-
-				if (line.startsWith("nNode"))
-					j = Integer.valueOf(getWord(line, line.indexOf(" = ") + 3, "?"));
-
-				if (line.startsWith(choice))
-					init[i][j] = Integer.valueOf(getWord(line, line.indexOf(" = ") + 3, "?"));
-			}
-
-			br.close();
-
-			return init;
-
-		} catch (Exception ex) {
-			ex.printStackTrace();
-		}
-		return null;
-	}
-
-	public static void generateSource(int NB_SITES, int NB_NODES) {
-		try {
-			File file = new File("C:/Users/josf9/git/Test/source_init");
-			FileWriter filewriter = new FileWriter(file);
-			BufferedWriter bw = new BufferedWriter(filewriter);
-
-			bw.write("NB_SITES = " + NB_SITES + "\n" + "NB_NODES = " + NB_NODES + "\n\n");
-
-			for (int site = 0; site < NB_SITES; site++) {
-				bw.write("nSite = " + site + "\n\n");
-				for (int node = 0; node < NB_NODES; node++) {
-					bw.write("nNode = " + node + "\n");
-					bw.write("cpuFrequency = " + "\n");
-					bw.write("cpuNodes = " + "\n");
-					bw.write("ram = " + "\n");
-					bw.write("hdd = " + "\n\n");
-				}
-			}
-
-			bw.close();
-
-		} catch (Exception ex) {
-			ex.printStackTrace();
-		}
-
-	}
-
 	/**
 	 * 0=date, 1=type, 2=latency</br>
+	 * writeOrRead = "W" or "R"
 	 */
-	public static List<List<Object>> getRequests(int numberNodes, String pick) {
-		String path = "/elasticsearch_nodes-" + numberNodes + "_replication-3/nodes-" + numberNodes
-				+ "_replication-3/evaluation_run_2018_11_25-";
-		if (numberNodes == 3)
-			path += "19_10/data/";
-		if (numberNodes == 9)
-			path += "22_40/data/";
+	public static List<List<Object>> getRequestsFromFile(int nbNodes, String writeOrRead) {
 
+		// Building the filepath
+		String path = "/elasticsearch_nodes-" + nbNodes + "_replication-3/nodes-" + nbNodes
+				+ "_replication-3/evaluation_run_2018_11_25-";
+
+		// Checking that nbNodes is equal to 3 or 9
+		switch (nbNodes) {
+		case 3:
+			path += "19_10/data/";
+			break;
+		case 9:
+			path += "22_40/data/";
+			break;
+		default:
+			throw new IllegalArgumentException("nbNodes cas only be 3 or 9 for file reading methods");
+		}
+
+		// Checking that writeOrRead is equal to "W" or "R"
 		String fileName = "";
-		switch (pick) {
+		switch (writeOrRead) {
 		case "W":
 			fileName = "load.txt";
 			break;
 		case "R":
 			fileName = "transaction.txt";
+			break;
+		default:
+			throw new IllegalArgumentException("writeOrRead can only be 'W' or 'R' for file reading methods");
 		}
 
 		String line = null;
@@ -317,27 +275,25 @@ public class TxtReader {
 	/**
 	 * Return the join of the two workloads. This method does not consider that
 	 * values should be re-sorted</br>
+	 * TODO change this method in an optimized way to re-sort values by timestamp
+	 * and change the absolute timestamps
 	 * 0=date(long), 1=type(String), 2=latency(double)
 	 */
-	public static final List<List<Object>> mergeWorkloadsSimple() {
+	public static final List<List<Object>> getAllRequestsFromFile(int nbNodes) {
 
-		List<List<Object>> workloadW = getRequests(9, "W");
-		List<List<Object>> workloadR = getRequests(9, "R");
+		List<List<Object>> requestsW = getRequestsFromFile(nbNodes, "W");
+		List<List<Object>> requestsR = getRequestsFromFile(nbNodes, "R");
 
-		List<List<Object>> workloadMerged = new ArrayList<List<Object>>();
-		for (int field = 0; field < 3; field++) {
+		List<List<Object>> requestsMerged = new ArrayList<List<Object>>();
+		for (int field = 0; field < requestsW.size(); field++) {
 			List<Object> add = new ArrayList<>();
-			add.addAll(workloadW.get(field));
-			add.addAll(workloadR.get(field));
-			workloadMerged.add(add);
+			add.addAll(requestsW.get(field));
+			add.addAll(requestsR.get(field));
+			requestsMerged.add(add);
 		}
 
-		return workloadMerged;
+		return requestsMerged;
 
-	}
-
-	public enum typeData {
-		CpuLoad, DiskIOReads, DiskIOWrites, MemoryUsage, NetworkReceived, NetworkSent
 	}
 
 	private static List<List<Double>> getValues(int nbNodes, typeData type, int[] vmList) {
@@ -442,11 +398,6 @@ public class TxtReader {
 		return columns;
 
 	}
-	
-	//////////////////////////////////////////////////////////////////////////////////////////////////
-	///////////////////// OTHER METHODS AND CLASSES
-	//////////////////////////////////////////////////////////////////////////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/**
 	 * Returns all the substring of source between start and the index of separator.
@@ -509,19 +460,28 @@ public class TxtReader {
 		return res;
 	}
 
-	public static double[] getAvgValuesAll(typeData type) {
+	/**
+	 * returns a double[] of size 2 containing the average of averages of usage of
+	 * VMs in specified type of data VMs for the loading phase (0) and the
+	 * transaction phase (1)
+	 * 
+	 * @param nbNodes
+	 * @param type
+	 * @return
+	 */
+	public static double[] getAvgValuesAll(int nbNodes, typeData type) {
 		double[] res = new double[] { 0, 0 };
 
-		List<Integer> vms = Arrays.asList(111, 121, 122, 142, 143, 144, 164, 212, 250);
+		int[] vms = getMonitoringVmsList(nbNodes);
 
 		double[] values;
 		for (int vm : vms) {
-			values = getAvgValuesVM(type, vm);
+			values = getAvgValuesVM(nbNodes, type, vm);
 			res[0] += values[0];
 			res[1] += values[1];
 		}
-		res[0] /= vms.size();
-		res[1] /= vms.size();
+		res[0] /= vms.length;
+		res[1] /= vms.length;
 
 		return res;
 	}
@@ -533,18 +493,42 @@ public class TxtReader {
 	 * @param vm
 	 * @return
 	 */
-	public static double[] getAvgValuesVM(typeData type, int vm) {
-		List<Double> valuesW = (List<Double>) (List<?>) cleanDataset(type, "W", vm).get(2);
-		List<Double> valuesR = (List<Double>) (List<?>) cleanDataset(type, "R", vm).get(2);
+	@SuppressWarnings("unchecked")
+	public static double[] getAvgValuesVM(int nbNodes, typeData type, int vm) {
+		List<Double> valuesW = (List<Double>) (List<?>) cleanDataset(nbNodes, type, "W", vm).get(2);
+		List<Double> valuesR = (List<Double>) (List<?>) cleanDataset(nbNodes, type, "R", vm).get(2);
+
+		System.out.println(valuesW.toString());
+		System.out.println(valuesR.toString());
+		List<Double> values = (List<Double>) (List<?>) readMonitoring(nbNodes, type, vm).get(2);
+		System.out.println(values.toString());
+		try {
+			Thread.sleep(5000);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
 		return new double[] { valuesW.stream().mapToDouble(s -> s).average().getAsDouble(),
 				valuesR.stream().mapToDouble(s -> s).average().getAsDouble() };
 
 	}
 
-	public static List<List<Object>> cleanDataset(typeData type, String writeOrRead, int vm) {
-		List<List<Object>> dataset = TxtReader.readMonitoring(9, type, vm);
+	/**
+	 * Removes values that are out of the bounds of the workload and the extreme
+	 * values</br>
+	 * Complexity = getRequestsFromFile
+	 * 
+	 * @param nbNodes
+	 * @param type
+	 * @param writeOrRead
+	 * @param vm
+	 * @return
+	 */
+	private static List<List<Object>> cleanDataset(int nbNodes, typeData type, String writeOrRead, int vm) {
+		List<List<Object>> dataset = readMonitoring(nbNodes, type, vm);
 
-		List<List<Object>> validRequest = TxtReader.getRequests(9, writeOrRead);
+		List<List<Object>> validRequest = getRequestsFromFile(nbNodes, writeOrRead);
 		long startTime = (Long) validRequest.get(0).get(0);
 		long endTime = (Long) validRequest.get(0).get(validRequest.get(0).size() - 1);
 
@@ -562,6 +546,34 @@ public class TxtReader {
 		}
 
 		return dataset;
+	}
+
+	/**
+	 * Plots the histogram of the specified data, the precision must be set
+	 * 
+	 * @param nbNodes
+	 * @param type
+	 * @param vm
+	 */
+	private static void histogramFrequencyDist(int nbNodes, typeData type, int vm) {
+		List<Double> dataset = (List<Double>) (List<?>) readMonitoring(nbNodes, type, vm).get(2);
+
+		// largeur des classes
+		final double precision = 0.5;
+		final int nbClasses = 1 + (int) (Collections.max(dataset).intValue() / precision);
+		int[] nbOccurences = new int[nbClasses];
+
+		for (double value : dataset) {
+			nbOccurences[(int) (value / precision)] += 1;
+		}
+
+		for (int oc : nbOccurences) {
+			String s = "";
+			for (int i = 0; i < oc; i++) {
+				s += "o";
+			}
+			System.out.println(s);
+		}
 	}
 
 }

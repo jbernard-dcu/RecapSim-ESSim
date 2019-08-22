@@ -1,11 +1,8 @@
 package Classes;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
-import java.util.TreeMap;
 
 import org.cloudbus.cloudsim.utilizationmodels.UtilizationModel;
 import org.cloudbus.cloudsim.utilizationmodels.UtilizationModelDynamic;
@@ -27,6 +24,7 @@ import eu.recap.sim.models.ApplicationModel.Application.Component.Api;
 import eu.recap.sim.models.InfrastructureModel.Link;
 import eu.recap.sim.models.WorkloadModel.Request;
 
+@SuppressWarnings("unused")
 public class ESSim extends RecapSim {
 
 	// the type of repartition used in Generation for
@@ -35,8 +33,8 @@ public class ESSim extends RecapSim {
 	// Repartition between the dataNodes for CPU values
 	double[] repartNodes = Generation.repartNodes;
 	// Average data sent/received for load phase (0) and transaction phase (1)
-	double[] avgDataSent = TxtReader.getAvgValuesAll(typeData.NetworkSent);
-	double[] avgDataReceived = TxtReader.getAvgValuesAll(typeData.NetworkReceived);
+	double[] avgDataSent = TxtReader.getAvgValuesAll(nbDataNodes, typeData.NetworkSent);
+	double[] avgDataReceived = TxtReader.getAvgValuesAll(nbDataNodes, typeData.NetworkReceived);
 
 	final static double[] avgUsageCPU = TxtReader.getAvgValues(nbDataNodes, typeData.CpuLoad);
 	final static double[] stdUsageCPU = TxtReader.getStdValues(nbDataNodes, typeData.CpuLoad);
@@ -80,7 +78,7 @@ public class ESSim extends RecapSim {
 			double submissionDelay, String applicationId, String componentId, String apiId, double ram_cloudlet,
 			int requestId, String originDeviceId) {
 
-		final long length = 10000; // in Million Instructions (MI)
+		// final long length = 10000; // in Million Instructions (MI)
 		// mi = length;
 
 		// cloudlet will use all the VM's CPU cores
@@ -111,17 +109,8 @@ public class ESSim extends RecapSim {
 			double avg = avgUsageCPU[Integer.valueOf(componentId) - 3];
 			double std = stdUsageCPU[Integer.valueOf(componentId) - 3];
 
-			double scale = std / 6.;
-			
-			System.out.println(avg+" "+scale);
-			try {
-				Thread.sleep(2000);
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+			double scale = std / 3.;
 
-			// we multiply the value by 40 to get equivalent of host at 2 cores
 			uCpuES = new UtilizationModelDynamic(Unit.PERCENTAGE, avg);
 			uCpuES.setUtilizationUpdateFunction(um -> avg + (new Random().nextGaussian()) * scale);
 		}
@@ -445,220 +434,6 @@ public class ESSim extends RecapSim {
 
 		}
 
-	}
-
-	/**
-	 * Shows TABLE CPU utilization of all VMs into a given Datacenter.
-	 */
-	@Override
-	protected void showTableCpuUtilizationForAllVms(final double simulationFinishTime, List<IRecapVe> veList) {
-
-		TreeMap<Double, List<Double>> cpuUtilisation = new TreeMap<Double, List<Double>>();
-
-		for (Vm vm : veList) {
-			for (Map.Entry<Double, Double> entry : vm.getUtilizationHistory().getHistory().entrySet()) {
-				final double time = entry.getKey();
-				final double vmCpuUsage = entry.getValue() * 100;
-
-				if (!cpuUtilisation.containsKey(time)) {
-					ArrayList<Double> zeros = new ArrayList<Double>();
-					for (int i = 0; i < veList.size(); i++) {
-						zeros.add(-1.);
-					}
-					cpuUtilisation.put(time, zeros);
-				}
-
-				cpuUtilisation.get(time).set((int) vm.getId(), vmCpuUsage);
-			}
-		}
-
-		System.out.println("/*********************************/");
-		System.out.println(" CPU Utilisation");
-		System.out.println("/*********************************/");
-
-		System.out.print("Time");
-		for (int i = 0; i < veList.size(); i++) {
-			System.out.print("\tVM" + i);
-		}
-		System.out.println("");
-
-		// continue printing previous CPU utilisation of unchanged
-		// start at zero
-		Double previousTime = 0.0;
-		List<Double> previousValues = new ArrayList<Double>();
-		for (int v = 0; v < veList.size(); v++) {
-			previousValues.add(0.);
-		}
-
-		for (Map.Entry<Double, List<Double>> entry : cpuUtilisation.entrySet()) {
-
-			// print zero usage of cpu if waited too long
-			if ((entry.getKey() / timeUnits - previousTime) > 20) {
-				// print next time
-				System.out.printf("%6.5f", previousTime);
-				List<Double> currentValues = entry.getValue();
-				for (int v = 0; v < currentValues.size(); v++) {
-
-					System.out.printf("\t%6.3f", 0.0);
-
-				}
-				System.out.println("");
-
-				// print previous time
-				System.out.printf("%6.5f", entry.getKey() / timeUnits);
-				for (int v = 0; v < currentValues.size(); v++) {
-
-					System.out.printf("\t%6.3f", 0.0);
-
-				}
-				System.out.println("");
-			}
-
-			// print CPU value
-			System.out.printf("%6.5f", entry.getKey() / timeUnits);
-
-			List<Double> currentValues = entry.getValue();
-			for (int v = 0; v < currentValues.size(); v++) {
-				if (currentValues.get(v) == -1) {
-					currentValues.set(v, previousValues.get(v));
-				}
-
-				System.out.printf("\t%6.3f", currentValues.get(v));
-
-			}
-			System.out.println("");
-			previousValues = currentValues;
-			previousTime = entry.getKey() / timeUnits;
-		}
-	}
-
-	/**
-	 * Shows TABLE RAM utilization of all VMs into a given Datacenter.
-	 */
-	@Override
-	protected void showTableRamUtilizationForAllVms(final double simulationFinishTime, List<IRecapVe> veList) {
-
-		TreeMap<Double, List<Double>> ramUtilisation = new TreeMap<Double, List<Double>>();
-
-		for (Vm vm : veList) {
-			for (Map.Entry<Double, Double> entry : allVmsRamUtilizationHistory.get(vm).entrySet()) {
-				final double time = entry.getKey();
-				final double vmCpuUsage = entry.getValue() * 100;
-				if (!ramUtilisation.containsKey(time)) {
-					ArrayList<Double> zeros = new ArrayList<Double>();
-					for (int i = 0; i < veList.size(); i++) {
-						zeros.add(-1.);
-					}
-					ramUtilisation.put(time, zeros);
-				}
-
-				ramUtilisation.get(time).set((int) vm.getId(), vmCpuUsage);
-			}
-		}
-
-		System.out.println("/*********************************/");
-		System.out.println(" RAM Utilisation");
-		System.out.println("/*********************************/");
-		System.out.print("Time");
-		for (int i = 0; i < veList.size(); i++) {
-			System.out.print("\tVM" + i);
-		}
-		System.out.println("");
-
-		// continue printing previous CPU utilisation of unchanged
-		// start at zero
-		Double previousTime = 0.0;
-		List<Double> previousValues = new ArrayList<Double>();
-		for (int v = 0; v < veList.size(); v++) {
-			previousValues.add(0.);
-		}
-
-		for (Map.Entry<Double, List<Double>> entry : ramUtilisation.entrySet()) {
-
-			// print zero usage of cpu if waited too long
-			if ((entry.getKey() / timeUnits - previousTime) > 20) {
-
-				// print next time
-				System.out.printf("%6.5f", previousTime + 0.001);
-				List<Double> currentValues = entry.getValue();
-				for (int v = 0; v < currentValues.size(); v++) {
-
-					System.out.printf("\t%6.3f", 0.0);
-
-				}
-				System.out.println("");
-
-				// print previous time
-				System.out.printf("%6.5f", entry.getKey() / timeUnits - 0.001);
-				for (int v = 0; v < currentValues.size(); v++) {
-
-					System.out.printf("\t%6.3f", 0.0);
-
-				}
-				System.out.println("");
-			}
-
-			System.out.printf("%6.5f", entry.getKey() / timeUnits);
-
-			List<Double> currentValues = entry.getValue();
-			for (int v = 0; v < currentValues.size(); v++) {
-				if (currentValues.get(v) == -1) {
-					// currentValues.set(v, previousValues.get(v));
-				}
-
-				System.out.printf("\t%6.3f", currentValues.get(v));
-			}
-			System.out.println("");
-			previousValues = currentValues;
-			previousTime = entry.getKey() / timeUnits;
-		}
-	}
-	//////////////////////////////////////////////////////////////////////////////////////////
-	/////////////////// ADDITIONAL METHODS
-	//////////////////////////////////////////////////////////////////////////////////////////
-	//////////////////////////////////////////////////////////////////////////////////////////
-
-	/**
-	 * Returns the list of next apis depending on the type of the request.</br>
-	 * </br>
-	 * 
-	 * - "INSERT" or "UPDATE" : i.e. index requests in ElasticSearch, travel from
-	 * the node holding the primary shard to all other nodes and synced on the
-	 * primary node</br>
-	 * - "xxx-FAILED" : TODO go back to ES Client without treatment</br>
-	 * - "READ" : normal behaviour of RecapSim
-	 */
-	private static List<String> getNextApisIdList(Api currentApi, Request r) {
-		String type = r.getType();
-
-		List<String> currentApiNextList = currentApi.getNextApiIdList();
-
-		List<String> nextApiIdList = new ArrayList<String>();
-
-		if (currentApi.getApiId().matches("\\d+_1")) {
-
-			// if the request is of type INDEX, then remove api "2_2" from next apis
-			List<String> indexType = Arrays.asList("INSERT", "UPDATE");
-			if (indexType.contains(type)) {
-				for (String apiId : currentApiNextList) {
-					if (!apiId.contentEquals("2_2"))
-						nextApiIdList.add(apiId);
-				}
-			}
-
-			// if the request is of type READ, then just execute once on each selected
-			// datanode
-			if (type.contentEquals("READ"))
-				nextApiIdList = Arrays.asList("2_2");
-		}
-
-		return nextApiIdList;
-	}
-
-	private static List<String> getNextComponentsIdList(Api currentApi, Request r) {
-		List<String> nextApiIdList = getNextApisIdList(currentApi, r);
-		nextApiIdList.replaceAll(s -> s.substring(0, s.indexOf("_")));
-		return nextApiIdList;
 	}
 
 }
