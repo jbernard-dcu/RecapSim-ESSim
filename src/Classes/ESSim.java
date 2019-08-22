@@ -22,17 +22,24 @@ import eu.recap.sim.cloudsim.vm.IRecapVe;
 import eu.recap.sim.cloudsim.vm.RecapVe;
 import eu.recap.sim.helpers.Log;
 import eu.recap.sim.helpers.ModelHelpers;
+import eu.recap.sim.helpers.RecapCloudletsTableBuilder;
 import eu.recap.sim.models.ApplicationModel.Application.Component.Api;
 import eu.recap.sim.models.InfrastructureModel.Link;
 import eu.recap.sim.models.WorkloadModel.Request;
 
 public class ESSim extends RecapSim {
 
-	final static typeData typeRepart = Generation.typeRepart;
+	// the type of repartition used in Generation for
 	final static int nbDataNodes = Generation.nbDataNodes;
 
-	final static double[] avgUsages = TxtReader.getAvgUsage(nbDataNodes, typeData.CpuLoad);
-	final static double[] stdUsages = TxtReader.getStdUsage(nbDataNodes, typeData.CpuLoad);
+	// Repartition between the dataNodes for CPU values
+	double[] repartNodes = Generation.repartNodes;
+	// Average data sent/received for load phase (0) and transaction phase (1)
+	double[] avgDataSent = TxtReader.getAvgValuesAll(typeData.NetworkSent);
+	double[] avgDataReceived = TxtReader.getAvgValuesAll(typeData.NetworkReceived);
+
+	final static double[] avgUsageCPU = TxtReader.getAvgValues(nbDataNodes, typeData.CpuLoad);
+	final static double[] stdUsageCPU = TxtReader.getStdValues(nbDataNodes, typeData.CpuLoad);
 
 	//////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////// OVERRIDES
@@ -40,12 +47,41 @@ public class ESSim extends RecapSim {
 	//////////////////////////////////////////////////////////////////////////////////////////
 
 	@Override
+	protected void printResults(double finishTime) {
+		/*
+		 * Prints results when the simulation is over (you can use your own code here to
+		 * print what you want from this cloudlet list)
+		 */
+
+		List<RecapCloudlet> finishedCloudlets = broker0.getCloudletFinishedList();
+		// new RecapCloudletsTableBuilder(finishedCloudlets, this.rim, this.ram,
+		// this.rwm, this.config).build();
+
+		// print Host CPU UTIL
+		// showCpuUtilizationForAllHosts();
+
+		// print VM utilisation
+		// showCpuUtilizationForAllVms(finishTime,veList);
+		// showRamUtilizationForAllVms(finishTime,veList);
+		// showBwUtilizationForAllVms(finishTime,veList);
+
+		// print VM resource consumption as a Table
+		showTableCpuUtilizationForAllVms(finishTime, veList);
+		// showTableRamUtilizationForAllVms(finishTime, veList);
+
+		// output JSON File
+		outputTableAsJSON(finishedCloudlets, this.rim, this.ram, this.rwm, this.config);
+
+		outputTableForExcel(finishedCloudlets, this.rim, this.ram, this.rwm, this.config);
+	}
+
+	@Override
 	protected IRecapCloudlet createCloudlet(Vm vm, long mi, long inputFileSize, long outputFileSize, long io,
 			double submissionDelay, String applicationId, String componentId, String apiId, double ram_cloudlet,
 			int requestId, String originDeviceId) {
 
 		final long length = 10000; // in Million Instructions (MI)
-		mi = length;
+		// mi = length;
 
 		// cloudlet will use all the VM's CPU cores
 		int numberOfCpuCores = (int) vm.getNumberOfPes();
@@ -61,16 +97,34 @@ public class ESSim extends RecapSim {
 		/*
 		 * UtilizationModel for CPU
 		 */
-		UtilizationModelDynamic uCpuES = new UtilizationModelDynamic(Unit.ABSOLUTE, umCpuValue);
-		// check if we're executing on one of the dataNodes
-		/*if (Integer.valueOf(componentId) >= 3) {
-			double avg = avgUsages[Integer.valueOf(componentId) - 3];
-			double std = stdUsages[Integer.valueOf(componentId) - 3];
+		// Setting maximum
+		double value = 1. / 10;// mi
+		RecapSim.setUmCpuValue(Math.toIntExact((int) (Generation.cpuFrequency[0][0] / 2)));
 
+		UtilizationModelDynamic uCpuES = new UtilizationModelDynamic(Unit.PERCENTAGE, value);
+		// UtilizationModelDynamic uCpuES = new UtilizationModelDynamic(Unit.ABSOLUTE,
+		// );
+
+		// check if we're executing on one of the dataNodes
+		// Multiply by 3000 to get values in MI
+		if (Integer.valueOf(componentId) >= 3) {
+			double avg = avgUsageCPU[Integer.valueOf(componentId) - 3];
+			double std = stdUsageCPU[Integer.valueOf(componentId) - 3];
+
+			double scale = std / 6.;
+			
+			System.out.println(avg+" "+scale);
+			try {
+				Thread.sleep(2000);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+
+			// we multiply the value by 40 to get equivalent of host at 2 cores
 			uCpuES = new UtilizationModelDynamic(Unit.PERCENTAGE, avg);
-			uCpuES.setUtilizationUpdateFunction(
-					um -> um.getUtilization() + getNextIncrement(std / 3., um.getUtilization()));
-		}*/
+			uCpuES.setUtilizationUpdateFunction(um -> avg + (new Random().nextGaussian()) * scale);
+		}
 
 		/*
 		 * UtilizationModel for BW
@@ -116,8 +170,6 @@ public class ESSim extends RecapSim {
 			Log.printFormattedLine("\n#EventListener: Cloudlet %d finished running at Vm %d at time %.2f",
 					finishedRecapCloudlet.getId(), currentVe.getId(), eventInfo.getTime());
 
-			double[] repartNodes = TxtReader.calculateRepartNodes(nbDataNodes, typeRepart);
-
 			// 1. Check if the Request that has triggered the VM has next
 			// cloudlet to execute
 			Api currentApi = ModelHelpers.getApiTask(this.ram.getApplicationsList(),
@@ -161,20 +213,9 @@ public class ESSim extends RecapSim {
 						// Filesize parameters
 						// int inputFileSize = nextApi.getDataToTransfer();
 						// int outputFileSize = nextApi.getDataToTransfer();
-						int inputFileSize = 0;
-						int outputFileSize = 0;
-						if (request.getType().contentEquals("INSERT")) {
-							inputFileSize = 1;
-							outputFileSize = 1;
-						}
-						if (request.getType().contentEquals("UPDATE")) {
-							inputFileSize = 5;
-							outputFileSize = 1;
-						}
-						if (request.getType().contentEquals("READ")) {
-							inputFileSize = 1;
-							outputFileSize = 1;
-						}
+
+						int inputFileSize = 1;
+						int outputFileSize = 1;
 
 						IRecapCloudlet newRecapCloudlet = createCloudlet(targetVe, nextApi.getMips(), inputFileSize,
 								outputFileSize, nextApi.getIops(), delay, finishedRecapCloudlet.getApplicationId(),
@@ -618,13 +659,6 @@ public class ESSim extends RecapSim {
 		List<String> nextApiIdList = getNextApisIdList(currentApi, r);
 		nextApiIdList.replaceAll(s -> s.substring(0, s.indexOf("_")));
 		return nextApiIdList;
-	}
-
-	private final static double getNextIncrement(double scale, double currentUtilization) {
-		double increment = (new Random().nextGaussian()) * scale;
-		if (currentUtilization + increment < 0)
-			increment = -currentUtilization;
-		return increment;
 	}
 
 }

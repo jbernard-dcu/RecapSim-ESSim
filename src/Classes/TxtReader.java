@@ -7,30 +7,18 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 
-import org.apache.commons.math3.analysis.ParametricUnivariateFunction;
-import org.apache.commons.math3.distribution.GammaDistribution;
 import org.apache.commons.math3.distribution.LogNormalDistribution;
 
-import Distribution.GammaFunc;
 import Distribution.LogNormalFunc;
-import Main.Launcher;
 
-@SuppressWarnings("unused")
 public class TxtReader {
-
-	public static void main(String[] args) {
-		System.out.println(mergeWorkloadsSimple().get(0).size());
-
-	}
 
 	/**
 	 * Calculates the average weights of operations of each type, based on the
@@ -71,26 +59,16 @@ public class TxtReader {
 
 	/**
 	 * Method to calculate the approx. repartition of the requests among the data
-	 * nodes, based on CpuLoad
+	 * nodes, based on specified type of data
 	 * 
 	 * @throws InterruptedException
 	 */
 	@SuppressWarnings("unchecked")
 	public static double[] calculateRepartNodes(int nbNodes, typeData type) {
 
-		int[] vms;
-		switch (nbNodes) {
-		case 3:
-			vms = new int[] { 111, 144, 164 };
-			break;
-		case 9:
-			vms = new int[] { 111, 121, 122, 142, 143, 144, 164, 212, 250 }; // VM 149 not a data node
-			break;
-		default:
-			throw new IllegalArgumentException("nbNodes can only be 3 or 9 using GenerateYCSBWorkload");
-		}
+		int[] vms = getMonitoringVmsList(nbNodes);
 
-		// getting cpuLoads
+		// getting values
 		List<List<Double>> cpuLoads = new ArrayList<List<Double>>();
 		for (int vm : vms) {
 			List<Double> add = (List<Double>) (List<?>) readMonitoring(nbNodes, type, vm).get(2);
@@ -100,7 +78,7 @@ public class TxtReader {
 			cpuLoads.add(add);
 		}
 
-		// calculating normalized cpu load
+		// calculating normalized values
 		List<List<Double>> normCpuLoads = new ArrayList<List<Double>>();
 
 		for (int vm = 0; vm < cpuLoads.size(); vm++) {
@@ -118,7 +96,7 @@ public class TxtReader {
 			normCpuLoads.add(add);
 		}
 
-		// average for each VM of the normalized cpu load
+		// average for each VM of the normalized values
 		double[] distribution = new double[vms.length];
 
 		for (int vm = 0; vm < normCpuLoads.size(); vm++) {
@@ -134,29 +112,12 @@ public class TxtReader {
 
 	}
 
-	public static double[] getAvgUsage(int nbNodes, typeData type) {
-		int[] vms;
-		switch (nbNodes) {
-		case 3:
-			vms = new int[] { 111, 144, 164 };
-			break;
-		case 9:
-			vms = new int[] { 111, 121, 122, 142, 143, 144, 164, 212, 250 }; // VM 149 not a data node
-			break;
-		default:
-			throw new IllegalArgumentException("nbNodes can only be 3 or 9 using GenerateYCSBWorkload");
-		}
+	public static double[] getAvgValues(int nbNodes, typeData type) {
+
+		int[] vms = getMonitoringVmsList(nbNodes);
 
 		// getting cpuLoads
-		List<List<Double>> cpuLoads = new ArrayList<List<Double>>();
-		for (int vm : vms) {
-			@SuppressWarnings("unchecked")
-			List<Double> add = (List<Double>) (List<?>) readMonitoring(nbNodes, type, vm).get(2);
-
-			if (vm == 111)
-				add = add.subList(10, add.size()); // removing the 10 first values of VM111 to align timestamps
-			cpuLoads.add(add);
-		}
+		List<List<Double>> cpuLoads = getValues(nbNodes, type, vms);
 
 		double[] avgs = new double[vms.length];
 		for (int vm = 0; vm < vms.length; vm++) {
@@ -170,35 +131,17 @@ public class TxtReader {
 
 	}
 
-	public static double[] getStdUsage(int nbNodes, typeData type) {
-		int[] vms;
-		switch (nbNodes) {
-		case 3:
-			vms = new int[] { 111, 144, 164 };
-			break;
-		case 9:
-			vms = new int[] { 111, 121, 122, 142, 143, 144, 164, 212, 250 }; // VM 149 not a data node
-			break;
-		default:
-			throw new IllegalArgumentException("nbNodes can only be 3 or 9 using GenerateYCSBWorkload");
-		}
+	public static double[] getStdValues(int nbNodes, typeData type) {
 
-		// getting cpuLoads
-		List<List<Double>> cpuLoads = new ArrayList<List<Double>>();
-		for (int vm : vms) {
-			@SuppressWarnings("unchecked")
-			List<Double> add = (List<Double>) (List<?>) readMonitoring(nbNodes, type, vm).get(2);
+		int[] vms = getMonitoringVmsList(nbNodes);
 
-			if (vm == 111)
-				add = add.subList(10, add.size()); // removing the 10 first values of VM111 to align timestamps
-			cpuLoads.add(add);
-		}
+		List<List<Double>> cpuLoads = getValues(nbNodes, type, vms);
 
 		double[] stds = new double[vms.length];
 		for (int vm = 0; vm < vms.length; vm++) {
-			stds[vm] = (Collections.max(cpuLoads.get(vm))-Collections.min(cpuLoads.get(vm)))/4.;
+			stds[vm] = (Collections.max(cpuLoads.get(vm)) - Collections.min(cpuLoads.get(vm))) / 4.;
 		}
-		
+
 		return stds;
 	}
 
@@ -262,78 +205,6 @@ public class TxtReader {
 		} catch (Exception ex) {
 			ex.printStackTrace();
 		}
-
-	}
-
-	/**
-	 * Returns the contents of the specified monitoring file</br>
-	 * 0=relative timestamp (double), 1=absolute timestamp(Date), 2=value (double)
-	 * 
-	 * @param numberNodes 3 or 9
-	 */
-	public static List<List<Object>> readMonitoring(int numberNodes, typeData type, int vm) {
-		String path = "/elasticsearch_nodes-" + numberNodes + "_replication-3/nodes-" + numberNodes
-				+ "_replication-3/evaluation_run_2018_11_25-";
-		if (numberNodes == 3)
-			path += "19_10/monitoring/";
-		if (numberNodes == 9)
-			path += "22_40/monitoring/";
-
-		String fileName;
-		switch (type) {
-		case CpuLoad:
-			fileName = "cpuLoad";
-			break;
-		case DiskIOReads:
-			fileName = "disk-io-reads";
-			break;
-		case DiskIOWrites:
-			fileName = "disk-io-writes";
-			break;
-		case MemoryUsage:
-			fileName = "memory-usage";
-			break;
-		case NetworkReceived:
-			fileName = "network-received";
-			break;
-		case NetworkSent:
-			fileName = "network-sent";
-			break;
-		default:
-			fileName = "";
-		}
-		fileName += "-node-134.60.64." + vm + ".txt";
-
-		List<List<Object>> columns = new ArrayList<List<Object>>();
-
-		try {
-			File file = new File(System.getProperty("user.dir") + File.separator + path + File.separator + fileName);
-			FileReader fileReader = new FileReader(file);
-			BufferedReader bufferedReader = new BufferedReader(fileReader);
-
-			String line = bufferedReader.readLine();
-
-			for (int field = 0; field < 3; field++) {
-				columns.add(new ArrayList<Object>());
-			}
-
-			while ((line = bufferedReader.readLine()) != null) {
-				double addRelTime = Double.parseDouble(getWord(line, 0, ","));
-				Date addAbsTime = readTimeMonitoring(getWord(line, line.indexOf(",") + 1, ","));
-				double addValue = Double.parseDouble(getWord(line, line.indexOf(",", line.indexOf(",") + 1) + 1, ","));
-
-				columns.get(0).add(addRelTime);
-				columns.get(1).add(addAbsTime);
-				columns.get(2).add(addValue);
-			}
-
-			bufferedReader.close();
-
-		} catch (Exception ex) {
-			ex.printStackTrace();
-		}
-
-		return columns;
 
 	}
 
@@ -469,6 +340,109 @@ public class TxtReader {
 		CpuLoad, DiskIOReads, DiskIOWrites, MemoryUsage, NetworkReceived, NetworkSent
 	}
 
+	private static List<List<Double>> getValues(int nbNodes, typeData type, int[] vmList) {
+		// getting cpuLoads
+		List<List<Double>> values = new ArrayList<>();
+		for (int vm : vmList) {
+			@SuppressWarnings("unchecked")
+			List<Double> add = (List<Double>) (List<?>) readMonitoring(nbNodes, type, vm).get(2);
+
+			if (vm == 111)
+				add = add.subList(10, add.size()); // removing the 10 first values of VM111 to align timestamps
+			values.add(add);
+		}
+
+		return values;
+	}
+
+	private static int[] getMonitoringVmsList(int nbNodes) {
+		int[] vms;
+		switch (nbNodes) {
+		case 3:
+			vms = new int[] { 111, 144, 164 };
+			break;
+		case 9:
+			vms = new int[] { 111, 121, 122, 142, 143, 144, 164, 212, 250 }; // VM 149 not a data node
+			break;
+		default:
+			throw new IllegalArgumentException("nbNodes can only be 3 or 9 using GenerateYCSBWorkload");
+		}
+		return vms;
+	}
+
+	/**
+	 * Returns the contents of the specified monitoring file</br>
+	 * The Date is NOT calculated from the original date of the file
+	 * 0=relative timestamp (double), 1=absolute timestamp(Date), 2=value (double)
+	 * 
+	 * @param numberNodes 3 or 9
+	 */
+	private static List<List<Object>> readMonitoring(int numberNodes, typeData type, int vm) {
+		String path = "/elasticsearch_nodes-" + numberNodes + "_replication-3/nodes-" + numberNodes
+				+ "_replication-3/evaluation_run_2018_11_25-";
+		if (numberNodes == 3)
+			path += "19_10/monitoring/";
+		if (numberNodes == 9)
+			path += "22_40/monitoring/";
+
+		String fileName;
+		switch (type) {
+		case CpuLoad:
+			fileName = "cpuLoad";
+			break;
+		case DiskIOReads:
+			fileName = "disk-io-reads";
+			break;
+		case DiskIOWrites:
+			fileName = "disk-io-writes";
+			break;
+		case MemoryUsage:
+			fileName = "memory-usage";
+			break;
+		case NetworkReceived:
+			fileName = "network-received";
+			break;
+		case NetworkSent:
+			fileName = "network-sent";
+			break;
+		default:
+			fileName = "";
+		}
+		fileName += "-node-134.60.64." + vm + ".txt";
+
+		List<List<Object>> columns = new ArrayList<List<Object>>();
+
+		try {
+			File file = new File(System.getProperty("user.dir") + File.separator + path + File.separator + fileName);
+			FileReader fileReader = new FileReader(file);
+			BufferedReader bufferedReader = new BufferedReader(fileReader);
+
+			String line = bufferedReader.readLine();
+
+			for (int field = 0; field < 3; field++) {
+				columns.add(new ArrayList<Object>());
+			}
+
+			while ((line = bufferedReader.readLine()) != null) {
+				double addRelTime = Double.parseDouble(getWord(line, 0, ","));
+				Date addAbsTime = readTimeMonitoring(getWord(line, line.indexOf(",") + 1, ","));
+				double addValue = Double.parseDouble(getWord(line, line.indexOf(",", line.indexOf(",") + 1) + 1, ","));
+
+				columns.get(0).add(addRelTime);
+				columns.get(1).add(addAbsTime);
+				columns.get(2).add(addValue);
+			}
+
+			bufferedReader.close();
+
+		} catch (Exception ex) {
+			ex.printStackTrace();
+		}
+
+		return columns;
+
+	}
+	
 	//////////////////////////////////////////////////////////////////////////////////////////////////
 	///////////////////// OTHER METHODS AND CLASSES
 	//////////////////////////////////////////////////////////////////////////////////////////////////
@@ -488,30 +462,29 @@ public class TxtReader {
 	 * Reads the time in the format specified in monitoring files and returns the
 	 * value as a {@link Date}
 	 */
-	public static Date readTimeMonitoring(String time) {
-		Date date = new Date();
+	private static Date readTimeMonitoring(String time) {
 
-		long addTime = 0;
-
-		int start = 1 + time.indexOf("T");
-		addTime += Integer.valueOf(getWord(time, start, ":"));
-
+		int start = 0;
+		int year = Integer.valueOf(getWord(time, start, "-"));
+		start = time.indexOf("-", start) + 1;
+		int month = Integer.valueOf(getWord(time, start, "-"));
+		start = time.indexOf("-", start) + 1;
+		int day = Integer.valueOf(getWord(time, start, "T"));
+		start = 1 + time.indexOf("T");
+		int hours = Integer.valueOf(getWord(time, start, ":"));
 		start = 1 + time.indexOf(":", start);
-		addTime += Integer.valueOf(getWord(time, start, ":"));
-
+		int minutes = Integer.valueOf(getWord(time, start, ":"));
 		start = 1 + time.indexOf(":", start);
-		addTime += Integer.valueOf(getWord(time, start, "Z"));
+		int seconds = Integer.valueOf(getWord(time, start, "Z"));
 
-		date.setTime(date.getTime() + addTime);
-
-		return date;
+		return new GregorianCalendar(year, month, day, hours, minutes, seconds).getTime();
 	}
 
 	/**
 	 * Calculates and returns the time in seconds from the textual format used in
 	 * the data txt files
 	 */
-	public static long readTimeWorkload(String time) {
+	private static long readTimeWorkload(String time) {
 		int index = 0;
 		long res = 0;
 		int mult = 0;
@@ -534,6 +507,61 @@ public class TxtReader {
 			res += Long.parseLong(num) * mult;
 		}
 		return res;
+	}
+
+	public static double[] getAvgValuesAll(typeData type) {
+		double[] res = new double[] { 0, 0 };
+
+		List<Integer> vms = Arrays.asList(111, 121, 122, 142, 143, 144, 164, 212, 250);
+
+		double[] values;
+		for (int vm : vms) {
+			values = getAvgValuesVM(type, vm);
+			res[0] += values[0];
+			res[1] += values[1];
+		}
+		res[0] /= vms.size();
+		res[1] /= vms.size();
+
+		return res;
+	}
+
+	/**
+	 * 0=write mode, 1=read mode
+	 * 
+	 * @param type
+	 * @param vm
+	 * @return
+	 */
+	public static double[] getAvgValuesVM(typeData type, int vm) {
+		List<Double> valuesW = (List<Double>) (List<?>) cleanDataset(type, "W", vm).get(2);
+		List<Double> valuesR = (List<Double>) (List<?>) cleanDataset(type, "R", vm).get(2);
+		return new double[] { valuesW.stream().mapToDouble(s -> s).average().getAsDouble(),
+				valuesR.stream().mapToDouble(s -> s).average().getAsDouble() };
+
+	}
+
+	public static List<List<Object>> cleanDataset(typeData type, String writeOrRead, int vm) {
+		List<List<Object>> dataset = TxtReader.readMonitoring(9, type, vm);
+
+		List<List<Object>> validRequest = TxtReader.getRequests(9, writeOrRead);
+		long startTime = (Long) validRequest.get(0).get(0);
+		long endTime = (Long) validRequest.get(0).get(validRequest.get(0).size() - 1);
+
+		// clean all values out of specified bounds
+		int time = 0;
+		while (time < dataset.get(1).size()) {
+			long date = ((Date) dataset.get(1).get(time)).getTime();
+			if (date <= startTime || date > endTime) {
+				for (int field = 0; field < dataset.size(); field++) {
+					dataset.get(field).remove(time);
+				}
+			} else {
+				time++;
+			}
+		}
+
+		return dataset;
 	}
 
 }

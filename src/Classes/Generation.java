@@ -54,34 +54,35 @@ public final class Generation {
 
 	/* Sites */
 	static final int numberSites = 1;
-	static int[] numberNodesPerSite = { 2 + Launcher.NB_PRIMARYSHARDS };// WS + ES + Data nodes
+	static int nbDataNodes = Launcher.NB_PRIMARYSHARDS;
+	static int[] numberNodesPerSite = { 2 + nbDataNodes };// WS + ES + Data nodes
 
 	// Application landscape
 	// VM memory and storage expressed in Mo
 	// all VMs are the same
 
-	// Values changed for the ycsb workload
+	// Ve flavours
 	// 2, 4000, 70000
 	static final int vmCores = 2;
 	static final int vmMemory = 4_000; // 5,000 in output
 	static final int vmStorage = 70_000;
-
 	/* ES client */
 	static final int esClient_cores = 8;
 	static final int esClient_memory = 8_000;
 	static final int esClient_storage = 20_000;
 
-	/* Hosts */
-	static final int[][] cpuFrequency = initSameValue(numberSites, numberNodesPerSite, 3000); // MIPS or 2.6 GHz
-	static final int[][] cpuCores = initSameValue(numberSites, numberNodesPerSite, 80);
-	static final int[][] ram = initSameValue(numberSites, numberNodesPerSite, (int) 1E12); // host memory (MEGABYTE)
-	static final int[][] hdd = initSameValue(numberSites, numberNodesPerSite, (int) 1E9); // host storage (MEGABYTE)
-	static final int bw = 10_000; // 10Gbit/s
+	// Hosts
+	static int[][] cpuFrequency = initSameValue(numberSites, numberNodesPerSite, 3000); // MIPS or 2.6 GHz
+	static int[][] cpuCores = initSameValue(numberSites, numberNodesPerSite, 80);
+	static int[][] ram = initSameValue(numberSites, numberNodesPerSite, (int) 1E12); // host memory (MEGABYTE)
+	static int[][] hdd = initSameValue(numberSites, numberNodesPerSite, (int) 1E9); // host storage (MEGABYTE)
+	static int bw = 10_000; // 10Gbit/s
 
-	// repartition between data nodes
-	static typeData typeRepart = typeData.CpuLoad;
-	static int nbDataNodes = Launcher.NB_PRIMARYSHARDS;
-	static int nbDataNodesPerRequest = 6 /* Launcher.randGint(numberNodes / 2., numberNodes / 6., 0, numberNodes) */;
+	// Repartition of requests between data nodes for CPU values
+	static double[] repartNodes = TxtReader.calculateRepartNodes(nbDataNodes, typeData.CpuLoad);
+	
+	int randNbDataNodesPerRequest = Launcher.randGint(nbDataNodes / 2., nbDataNodes / 6., 0, nbDataNodes);
+	static int nbDataNodesPerRequest = 6;
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////// GENERATORS
@@ -298,7 +299,7 @@ public final class Generation {
 	 *                    workload is reduced to <code>nbRequest</code> requests
 	 * @throws InterruptedException
 	 */
-	public static Workload GenerateYCSBWorkload(int numberNodes, ApplicationLandscape appLandscape, int start,
+	public static Workload GenerateYCSBWorkload(int nbDNs, ApplicationLandscape appLandscape, int start,
 			int nbRequest) throws FileNotFoundException, InterruptedException {
 
 		long startTime = System.currentTimeMillis();
@@ -325,10 +326,10 @@ public final class Generation {
 
 		// Calculating frequency distribution
 		List<Integer> nodeIds = new ArrayList<Integer>();
-		for (int nodeId = 1; nodeId <= numberNodes; nodeId++) {
+		for (int nodeId = 1; nodeId <= nbDataNodes; nodeId++) {
 			nodeIds.add(nodeId);
 		}
-		double[] repartNodes = TxtReader.calculateRepartNodes(numberNodes, typeRepart);
+		
 		List<Pair<Integer, Double>> listValues = new ArrayList<>();
 		for (int nodeId : nodeIds) {
 			listValues.add(new Pair<Integer, Double>(nodeId, repartNodes[nodeId - 1]));
@@ -339,8 +340,9 @@ public final class Generation {
 		long dateInitialRequest = (long) validRequest.get(0).get(0);
 
 		// Clock parameters
-		final double cpuFrequency = 3E9; // Hz
-		final double msPerCycle = 1_000. / (cpuFrequency);
+
+		final double cpuFreq = cpuFrequency[0][0] * 1E6; // Hz
+		final double msPerCycle = 1_000. / (cpuFreq);
 		final int MULT_CPO = 1_000_000;
 		final Map<String, Double> cyclesType = TxtReader.calculateCyclesType(validRequest);
 
@@ -381,7 +383,7 @@ public final class Generation {
 
 			// MI = duration(s)*freq(Hz)/1E6
 			int duration = Math.max((int) (latency / 1_000), 1);
-			int miPerDataNode = (int) (cpuFrequency * 1E-6 * duration / 1_000);
+			int miPerDataNode = (int) (cpuFreq * 1E-6 * duration / 1_000);
 			requestBuilder.setMipsDataNodes(miPerDataNode * timeUnits);
 
 			device.addRequests(requestBuilder.build());
@@ -509,6 +511,7 @@ public final class Generation {
 				cpu.setId(nSite + "_" + nNode);
 				cpu.setMake("Intel");
 				cpu.setRating("12345");
+
 				cpu.setFrequency(cpuFrequency[nSite][nNode]);
 				// create cores
 				for (int e = 0; e < cpuCores[nSite][nNode]; e++) {
@@ -565,7 +568,8 @@ public final class Generation {
 	}
 
 	/**
-	 * Generates an array containing the same value everywhere, for testing
+	 * Generates an array containing the same value everywhere, for testing/<br>
+	 * nbSites*nbNodesPerSite
 	 */
 	private static int[][] initSameValue(int nbSites, int[] nbNodesPerSite, int value) {
 		int[][] res = new int[nbSites][];
@@ -682,8 +686,7 @@ public final class Generation {
 		return esClientBuilder;
 	}
 
-	static Component.Builder createDNComponent(String componentName, String componentId, String nodeId,
-			int nbDNs) {
+	static Component.Builder createDNComponent(String componentName, String componentId, String nodeId, int nbDNs) {
 
 		// Component for DN
 		Component.Builder dnBuilder = Component.newBuilder();

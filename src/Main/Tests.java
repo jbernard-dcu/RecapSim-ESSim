@@ -13,6 +13,8 @@ import eu.recap.sim.models.WorkloadModel.Workload;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.List;
 
 public class Tests {
@@ -25,69 +27,50 @@ public class Tests {
 
 	public static void main(String[] args) throws FileNotFoundException, InterruptedException {
 
-		/*
-		 * Simulation of data
-		 */
-		Infrastructure rim = Generation.GenerateInfrastructure("General infrastructure");
-		ApplicationLandscape ram = Generation.GenerateAppLandscape(Launcher.NB_APPS, Launcher.NB_PRIMARYSHARDS,
-				rim);
-		Workload rwm = Generation.GenerateYCSBWorkload(Launcher.NB_PRIMARYSHARDS, ram, 83-10, 10);
-		Launcher launcher = new Launcher(rim, ram, rwm);
-
-		ramSimu = launcher.getRecapExperiment().getAllVmsRamUtilizationHistory();
-		cpuSimu = launcher.getRecapExperiment().getAllVmsCpuUtilizationHistory();
-
-		/*
-		 * Real data
-		 */
-		ramReal = getData(Launcher.NB_PRIMARYSHARDS, typeData.MemoryUsage);
-		cpuReal = getData(Launcher.NB_PRIMARYSHARDS, typeData.CpuLoad);
-
-		//Print.printMapMonitoring(ramReal);
-		//Print.printMapMonitoring(ramSimu);
-		 Print.printMapMonitoring(cpuReal);
-		 Print.printMapMonitoring(cpuSimu);
 		
-		//Print.printMapMonitoring(gapStrings(cpuReal));
 
 	}
+
 	
-	
+
 	/**
-	 * For testing, show the gap to mean for each VM, allows to see which VMs are above mean usage </br>
+	 * For testing, show the gap to mean for each VM, allows to see which VMs are
+	 * above mean usage </br>
 	 * Only useful for real data
 	 */
 	public static TreeMap<Double, List<String>> gapStrings(TreeMap<Double, List<Double>> simuData) {
 		double[] moys = new double[simuData.get(simuData.firstKey()).size()];
-		for (int i = 0; i < moys.length; i++) { moys[i] = 0; }
-		
+		for (int i = 0; i < moys.length; i++) {
+			moys[i] = 0;
+		}
+
 		for (double time : simuData.keySet()) {
-			for(int vm=0;vm<simuData.get(time).size();vm++) {
-				moys[vm]+=simuData.get(time).get(vm);
+			for (int vm = 0; vm < simuData.get(time).size(); vm++) {
+				moys[vm] += simuData.get(time).get(vm);
 			}
 		}
-		
-		for(int i=0;i<moys.length;i++) {
-			moys[i]=moys[i]/simuData.size();
+
+		for (int i = 0; i < moys.length; i++) {
+			moys[i] = moys[i] / simuData.size();
 		}
-		
-		TreeMap<Double,List<String>> res = new TreeMap<Double, List<String>>();
-		for(double key:simuData.keySet()) {
+
+		TreeMap<Double, List<String>> res = new TreeMap<Double, List<String>>();
+		for (double key : simuData.keySet()) {
 			List<String> add = new ArrayList<String>();
-			
-			for(int vm=0;vm<simuData.get(key).size();vm++) {
+
+			for (int vm = 0; vm < simuData.get(key).size(); vm++) {
 				String s = "";
-				if (key==simuData.firstKey())
-					s+=moys[vm];
-				double diff = simuData.get(key).get(vm)-moys[vm];
-				
-				s+=(diff<0)?" - ":" + ";
-				
-				s+=String.format("%.4f",Math.abs(diff));
-				
+				if (key == simuData.firstKey())
+					s += moys[vm];
+				double diff = simuData.get(key).get(vm) - moys[vm];
+
+				s += (diff < 0) ? " - " : " + ";
+
+				s += String.format("%.4f", Math.abs(diff));
+
 				add.add(s);
 			}
-			
+
 			res.put(key, add);
 		}
 		return res;
