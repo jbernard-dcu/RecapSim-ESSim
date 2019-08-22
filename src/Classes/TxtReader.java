@@ -12,14 +12,23 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.math3.distribution.EnumeratedDistribution;
 import org.apache.commons.math3.distribution.LogNormalDistribution;
+import org.apache.commons.math3.fitting.GaussianCurveFitter;
+import org.apache.commons.math3.fitting.GaussianCurveFitter.ParameterGuesser;
+import org.apache.commons.math3.fitting.WeightedObservedPoints;
 
 import Distribution.LogNormalFunc;
 
 public class TxtReader {
 
 	public static void main(String[] args) {
-		histogramFrequencyDist(9, typeData.NetworkReceived, 122);
+		List<Integer> freqDist = getFrequencyDist(9, typeData.NetworkReceived, 142);
+
+		for (List<Integer> dist : getModesList(freqDist)) {
+			System.out.println(dist.toString());
+			System.out.println(Arrays.toString(fitDistribution(freqDist)));
+		}
 	}
 
 	public enum typeData {
@@ -555,25 +564,64 @@ public class TxtReader {
 	 * @param type
 	 * @param vm
 	 */
-	private static void histogramFrequencyDist(int nbNodes, typeData type, int vm) {
+	@SuppressWarnings("unchecked")
+	private static List<Integer> getFrequencyDist(int nbNodes, typeData type, int vm) {
 		List<Double> dataset = (List<Double>) (List<?>) readMonitoring(nbNodes, type, vm).get(2);
 
 		// largeur des classes
-		final double precision = 0.5;
+		final double precision = 0.25;
 		final int nbClasses = 1 + (int) (Collections.max(dataset).intValue() / precision);
-		int[] nbOccurences = new int[nbClasses];
 
+		Integer[] nbOccurences = new Integer[nbClasses];
+		Arrays.fill(nbOccurences, 0);
 		for (double value : dataset) {
 			nbOccurences[(int) (value / precision)] += 1;
 		}
 
-		for (int oc : nbOccurences) {
-			String s = "";
-			for (int i = 0; i < oc; i++) {
-				s += "o";
-			}
-			System.out.println(s);
-		}
+		/*
+		 * for (Integer oc : nbOccurences) {
+		 * String s = "";
+		 * for (int i = 0; i < oc; i++) {
+		 * s += "o";
+		 * }
+		 * System.out.println(oc + " " + s);
+		 * }
+		 */
+
+		return Arrays.asList(nbOccurences);
 	}
 
+	private static List<List<Integer>> getModesList(List<Integer> frequencyDist) {
+
+		int startCrop = 0;
+		int cN = 0;
+		List<List<Integer>> foundCrops = new ArrayList<>();
+		for (int i = 0; i < frequencyDist.size(); i++) {
+			if (frequencyDist.get(i) != 0) {
+				if (cN == 1)
+					startCrop = i;
+				cN++;
+			} else {
+				if (cN >= 3)
+					foundCrops.add(frequencyDist.subList(Math.max(0, startCrop - 2), i + 2));
+				cN = 0;
+			}
+		}
+
+		return foundCrops;
+	}
+
+	public static double[] fitDistribution(List<Integer> frequencyDist) {
+		WeightedObservedPoints data = new WeightedObservedPoints();
+		int c = 0;
+		for (int oc : frequencyDist) {
+			data.add(c++, 1. * oc / frequencyDist.size());
+		}
+		
+		
+
+		GaussianCurveFitter gfitter = GaussianCurveFitter.create().withStartPoint(new double[] {1,1,1});
+		return gfitter.fit(data.toList());
+
+	}
 }
