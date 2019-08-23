@@ -17,6 +17,35 @@ import eu.recap.sim.models.InfrastructureModel.Node;
 import eu.recap.sim.models.InfrastructureModel.ResourceSite;
 
 public final class OldMethods {
+	
+	/**
+	 * Calculates and returns the time in seconds from the textual format used in
+	 * the data txt files
+	 */
+	private static long readTimeWorkload(String time) {
+		int index = 0;
+		long res = 0;
+		int mult = 0;
+		while (index < time.length()) {
+			String num = TxtReader.getWord(time, index, " ");
+			index += num.length() + 1;
+			String hor = TxtReader.getWord(time, index, " ");
+			index += hor.length() + 1;
+
+			if (hor.contains("day")) {
+				mult = 86_400;
+			} else if (hor.contains("hour")) {
+				mult = 3600;
+			} else if (hor.contains("minute")) {
+				mult = 60;
+			} else if (hor.contains("second")) {
+				mult = 1;
+			}
+
+			res += Long.parseLong(num) * mult;
+		}
+		return res;
+	}
 
 	/**
 	 * Generates a new ApplicationLandscape taking into account the difference of

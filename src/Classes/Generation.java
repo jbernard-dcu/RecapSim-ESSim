@@ -304,11 +304,9 @@ public final class Generation {
 
 		long startTime = System.currentTimeMillis();
 
-		// Reading input file
 		List<List<Object>> validRequest = TxtReader.getAllRequestsFromFile(nbDataNodes);
 
 		// reducing the requestSet if necessary
-
 		nbRequest = Math.min(nbRequest, validRequest.get(0).size() - start);
 		if (start >= 0 && nbRequest > 0) {
 			List<List<Object>> reducedValidRequest = new ArrayList<List<Object>>();

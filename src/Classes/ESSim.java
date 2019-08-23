@@ -11,6 +11,7 @@ import org.cloudbus.cloudsim.utilizationmodels.UtilizationModel.Unit;
 import org.cloudbus.cloudsim.vms.Vm;
 import org.cloudsimplus.listeners.CloudletVmEventInfo;
 
+import Classes.TxtReader.loadMode;
 import Classes.TxtReader.typeData;
 import eu.recap.sim.RecapSim;
 import eu.recap.sim.cloudsim.cloudlet.IRecapCloudlet;
@@ -24,7 +25,6 @@ import eu.recap.sim.models.ApplicationModel.Application.Component.Api;
 import eu.recap.sim.models.InfrastructureModel.Link;
 import eu.recap.sim.models.WorkloadModel.Request;
 
-@SuppressWarnings("unused")
 public class ESSim extends RecapSim {
 
 	// the type of repartition used in Generation for
@@ -32,12 +32,6 @@ public class ESSim extends RecapSim {
 
 	// Repartition between the dataNodes for CPU values
 	double[] repartNodes = Generation.repartNodes;
-	// Average data sent/received for load phase (0) and transaction phase (1)
-	double[] avgDataSent = TxtReader.getAvgValuesAll(nbDataNodes, typeData.NetworkSent);
-	double[] avgDataReceived = TxtReader.getAvgValuesAll(nbDataNodes, typeData.NetworkReceived);
-
-	final static double[] avgUsageCPU = TxtReader.getAvgValues(nbDataNodes, typeData.CpuLoad);
-	final static double[] stdUsageCPU = TxtReader.getStdValues(nbDataNodes, typeData.CpuLoad);
 
 	//////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////// OVERRIDES
@@ -106,13 +100,26 @@ public class ESSim extends RecapSim {
 		// check if we're executing on one of the dataNodes
 		// Multiply by 3000 to get values in MI
 		if (Integer.valueOf(componentId) >= 3) {
-			double avg = avgUsageCPU[Integer.valueOf(componentId) - 3];
-			double std = stdUsageCPU[Integer.valueOf(componentId) - 3];
+			// Getting the type of the request associated with this cloudlet TODO change
+			// deviceId (working for ycsb workload)
+			Request r = ModelHelpers.getRequestTask(rwm.getDevicesList(), rwm.getDevicesList().get(0).getDeviceId(),
+					requestId);
+			String type = r.getType();
+			loadMode load = null;
+			if (type.contentEquals("INSERT") || type.equals("UPDATE"))
+				load = loadMode.WRITE;
+			if (type.contentEquals("READ"))
+				load = loadMode.READ;
 
-			double scale = std / 3.;
+			typeData t = typeData.CpuLoad;
+			double precision = 0.25;
 
-			uCpuES = new UtilizationModelDynamic(Unit.PERCENTAGE, avg);
-			uCpuES.setUtilizationUpdateFunction(um -> avg + (new Random().nextGaussian()) * scale);
+			double[] normalParams = TxtReader.getParamsDist(nbDataNodes, Integer.valueOf(componentId), t, precision,
+					load);
+
+			uCpuES = new UtilizationModelDynamic(Unit.PERCENTAGE, normalParams[0]);
+			uCpuES.setUtilizationUpdateFunction(
+					um -> normalParams[0] + (new Random().nextGaussian()) * normalParams[1]);
 		}
 
 		/*
