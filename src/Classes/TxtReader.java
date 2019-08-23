@@ -22,14 +22,47 @@ import Distribution.LogNormalFunc;
 public class TxtReader {
 
 	public static void main(String[] args) {
-		double precision = 0.25;
+		double precision = 1.5;
 
-		TreeMap<Double, Double> freqDist = getFrequencyDist(9, typeData.NetworkReceived, 142, precision);
+		List<Double> dataset = getValuesNonZeroReads(9,121);
+
+		TreeMap<Double, Double> freqDist = getFrequencyDist(dataset,  precision);
 
 		for (Map<Object, Double> dist : getModesList(freqDist, precision)) {
 			System.out.println(dist.toString());
 			System.out.println(Arrays.toString(fitDistribution(dist)));
 		}
+	}
+
+	///////////////////////////////////////////////////////////////////////////////////////
+	///////////////// OTHER METHODS
+	///////////////////////////////////////////////////////////////////////////////////////
+
+	@SuppressWarnings("unchecked")
+	private static List<Double> getWaitingTimesReads(int nbNodes, int vm) {
+
+		List<List<Object>> monitoringData = readMonitoring(nbNodes, typeData.DiskIOReads, vm);
+
+		List<Double> timestamps = (List<Double>) (List<?>) monitoringData.get(0);
+		List<Double> values = (List<Double>) (List<?>) monitoringData.get(2);
+
+		int previousOc = 0;
+
+		List<Double> waitingTimes = new ArrayList<>();
+		for (int time = 0; time < timestamps.size(); time++) {
+			if (values.get(time) != 0) {
+				waitingTimes.add(timestamps.get(time) - timestamps.get(previousOc));
+				previousOc = time;
+			}
+		}
+
+		return waitingTimes;
+	}
+
+	@SuppressWarnings("unchecked")
+	private static List<Double> getValuesNonZeroReads(int nbNodes, int vm) {
+		List<Double> values = (List<Double>) (List<?>) readMonitoring(nbNodes, typeData.DiskIOReads, vm).get(2);
+		return values.stream().filter(value -> value > 0).collect(Collectors.toList());
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////////
@@ -399,9 +432,11 @@ public class TxtReader {
 		// TODO check typeData to avoid having less than two modes
 
 		int[] vms = getMonitoringVmsList(nbDNs);
+		
+		List<Double> dataset =(List<Double>) (List<?>)  readMonitoring(nbDNs, type, vms[componentId - 3]).get(2);
 
 		// Calculating specified freqDist
-		TreeMap<Double, Double> freqDist = getFrequencyDist(nbDNs, type, vms[componentId - 3], precision);
+		TreeMap<Double, Double> freqDist = getFrequencyDist(dataset, precision);
 		// Getting sub distributions
 		List<Map<Object, Double>> modesDists = getModesList(freqDist, precision);
 		// Getting the right dist based on loadMode. TODO check that the first and last
@@ -577,8 +612,7 @@ public class TxtReader {
 	 * @param vm
 	 */
 	@SuppressWarnings("unchecked")
-	private static TreeMap<Double, Double> getFrequencyDist(int nbNodes, typeData type, int vm, double precision) {
-		List<Double> dataset = (List<Double>) (List<?>) readMonitoring(nbNodes, type, vm).get(2);
+	private static TreeMap<Double, Double> getFrequencyDist(List<Double> dataset, double precision) {
 
 		TreeMap<Double, Double> res = new TreeMap<Double, Double>();
 		final int nbClasses = 1 + (int) (Collections.max(dataset) / precision);
@@ -598,6 +632,12 @@ public class TxtReader {
 				s += "o";
 			}
 			System.out.println(key + " " + s);
+			try {
+				Thread.sleep(100);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 
 		return res;
