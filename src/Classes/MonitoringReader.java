@@ -7,15 +7,17 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 import Classes.ReaderUtils.typeData;
+import Classes.ReaderUtils.loadMode;
 
+@SuppressWarnings("unchecked")
 public class MonitoringReader {
 
 	private int nbNodes;
-	private typeData type;
-	private int vm;
-
 	private List<List<Object>> data;
 
 	public MonitoringReader(int nbNodes, int vm, typeData type) {
@@ -23,10 +25,39 @@ public class MonitoringReader {
 			throw new IllegalArgumentException("nbNodes can only be 3 or 9 on MonitoringReader creation");
 
 		this.nbNodes = nbNodes;
-		this.vm = vm;
-		this.type = type;
 
-		String filepath = getFilePath();
+		String path = "/elasticsearch_nodes-" + nbNodes + "_replication-3/nodes-" + nbNodes
+				+ "_replication-3/evaluation_run_2018_11_25-";
+		if (nbNodes == 3)
+			path += "19_10/monitoring/";
+		if (nbNodes == 9)
+			path += "22_40/monitoring/";
+
+		String fileName;
+		switch (type) {
+		case CpuLoad:
+			fileName = "cpuLoad";
+			break;
+		case DiskIOReads:
+			fileName = "disk-io-reads";
+			break;
+		case DiskIOWrites:
+			fileName = "disk-io-writes";
+			break;
+		case MemoryUsage:
+			fileName = "memory-usage";
+			break;
+		case NetworkReceived:
+			fileName = "network-received";
+			break;
+		case NetworkSent:
+			fileName = "network-sent";
+			break;
+		default:
+			fileName = "";
+		}
+		fileName += "-node-134.60.64." + vm + ".txt";
+		String filepath = System.getProperty("user.dir") + File.separator + path + File.separator + fileName;
 
 		List<List<Object>> columns = new ArrayList<List<Object>>();
 
@@ -62,52 +93,8 @@ public class MonitoringReader {
 		this.data = columns;
 	}
 
-	public List<List<Object>> getData(){
+	public List<List<Object>> getData() {
 		return this.data;
-	}
-	
-	
-	/**
-	 * Builds and returns the filepath String of the monitoring file of nbNodes
-	 * cluster and typeData values
-	 * 
-	 * @param nbNodes
-	 * @param type
-	 * @return
-	 */
-	public String getFilePath() {
-		String path = "/elasticsearch_nodes-" + nbNodes + "_replication-3/nodes-" + nbNodes
-				+ "_replication-3/evaluation_run_2018_11_25-";
-		if (nbNodes == 3)
-			path += "19_10/monitoring/";
-		if (nbNodes == 9)
-			path += "22_40/monitoring/";
-
-		String fileName;
-		switch (type) {
-		case CpuLoad:
-			fileName = "cpuLoad";
-			break;
-		case DiskIOReads:
-			fileName = "disk-io-reads";
-			break;
-		case DiskIOWrites:
-			fileName = "disk-io-writes";
-			break;
-		case MemoryUsage:
-			fileName = "memory-usage";
-			break;
-		case NetworkReceived:
-			fileName = "network-received";
-			break;
-		case NetworkSent:
-			fileName = "network-sent";
-			break;
-		default:
-			fileName = "";
-		}
-		fileName += "-node-134.60.64." + vm + ".txt";
-		return System.getProperty("user.dir") + File.separator + path + File.separator + fileName;
 	}
 
 	/**
@@ -146,4 +133,150 @@ public class MonitoringReader {
 		return dataset;
 	}
 
+	/**
+	 * returns the fitDistribution for the given parameters and the specified
+	 * loadMode
+	 * 
+	 * @param nbDNs
+	 * @param compId
+	 * @param type
+	 * @param precision
+	 * @param load
+	 * @return
+	 */
+	public double[] getParamsDist(String componentId, double precision, loadMode load) {
+		int compId = Integer.valueOf(componentId);
+
+		if (compId < 3 || compId > 2 + nbNodes)
+			throw new IllegalArgumentException(
+					"componentId must point to one of the datanodes (3 <= componentId <= 2+nbDNs)");
+
+		// TODO check typeData to avoid having less than two modes
+
+		List<Double> dataset = (List<Double>) (List<?>) data.get(2);
+
+		// Calculating specified freqDist
+		TreeMap<Double, Double> freqDist = getFrequencyDist(dataset, precision);
+		// Getting sub distributions
+		List<Map<Object, Double>> modesDists = getModesList(freqDist, precision);
+		// Getting the right dist based on loadMode. TODO check that the first and last
+		// modes are always the good ones
+		System.out.println(modesDists.size());
+		try {
+			Thread.sleep(1000);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		switch (load) {
+		case WRITE:
+			return estimateGaussianDist(modesDists.get(0));
+		case READ:
+			return estimateGaussianDist(modesDists.get(modesDists.size() - 1));
+		}
+
+		return null;
+	}
+
+	/**
+	 * Returns estimators of the parameters of a normal distribution fitting the
+	 * dist given. Does not check if the data given really has a normal
+	 * distribution before calculation
+	 * 
+	 * @param dist
+	 * @return
+	 */
+	private static double[] estimateGaussianDist(Map<Object, Double> dist) {
+		List<Double> listKeyset = (List<Double>) (List<?>) (new ArrayList<>(dist.keySet()));
+		double avg = listKeyset.stream().mapToDouble(s -> (Double) s).average().getAsDouble();
+
+		double meanSquares = listKeyset.stream().mapToDouble(s -> Math.pow(s, 2)).average().getAsDouble();
+		double std = Math.sqrt(meanSquares - Math.pow(avg, 2));
+
+		return new double[] { avg, std };
+
+	}
+
+	/**
+	 * Plots and returns the histogram of the specified data, the precision must be
+	 * set
+	 * 
+	 * @param nbNodes
+	 * @param type
+	 * @param vm
+	 */
+	private static TreeMap<Double, Double> getFrequencyDist(List<Double> dataset, double precision) {
+
+		TreeMap<Double, Double> res = new TreeMap<Double, Double>();
+		final int nbClasses = 1 + (int) (Collections.max(dataset) / precision);
+
+		for (int i = 0; i <= nbClasses; i++) {
+			res.put(precision * i, 0.);
+		}
+
+		for (double value : dataset) {
+			double key = precision * (int) (value / precision);
+			res.put(key, res.get(key) + 1);
+		}
+
+		printHistogram(res, 0);
+
+		return res;
+	}
+
+	private static void printHistogram(TreeMap<Double, Double> freq, long waitingTimeMillis) {
+		for (double key : freq.keySet()) {
+			String s = "";
+			for (int i = 0; i < freq.get(key).intValue(); i++) {
+				s += "o";
+			}
+			System.out.println(key + " " + s);
+			try {
+				Thread.sleep(waitingTimeMillis);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
+	/**
+	 * Splits the observed frequency distribution in many new frequency
+	 * distributions corresponding o the different modes
+	 * 
+	 * @param freqDist
+	 * @param precision
+	 * @return
+	 */
+	private static List<Map<Object, Double>> getModesList(TreeMap<Double, Double> freqDist, double precision) {
+
+		double startCrop = 0;
+		int cN = 0;
+		List<Map<Object, Double>> foundCrops = new ArrayList<>();
+		for (double key : freqDist.keySet()) {
+			if (freqDist.get(key) != 0) {
+				if (cN == 1)
+					startCrop = key;
+				cN++;
+			} else {
+				if (cN >= 3) {
+					List<Double> filter = new ArrayList<>();
+					for (double cle = Math.max(0, startCrop - precision); cle < Math.min(key + precision,
+							freqDist.keySet().size()); cle += precision) {
+						filter.add(cle);
+					}
+
+					foundCrops.add(filter.stream().filter(freqDist::containsKey)
+							.collect(Collectors.toMap(k -> k, freqDist::get)));
+				}
+
+				cN = 0;
+
+			}
+		}
+
+		// TODO merge maps in the case they are not disjointed
+
+		return foundCrops;
+	}
 }

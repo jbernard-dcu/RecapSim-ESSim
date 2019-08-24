@@ -4,7 +4,6 @@ import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Map;
 import java.util.HashSet;
 import java.util.List;
 
@@ -14,9 +13,9 @@ import org.apache.commons.math3.util.Pair;
 
 import Classes.Parameters.path;
 import Classes.Parameters.typeParam;
-import Classes.TxtReader.typeData;
+import Classes.ReaderUtils.loadMode;
+import Classes.ReaderUtils.typeData;
 import Main.Launcher;
-import eu.recap.sim.RecapSim;
 import eu.recap.sim.models.ApplicationModel.Application;
 import eu.recap.sim.models.ApplicationModel.ApplicationLandscape;
 import eu.recap.sim.models.ApplicationModel.Deployment;
@@ -304,7 +303,9 @@ public final class Generation {
 
 		long startTime = System.currentTimeMillis();
 
-		List<List<Object>> validRequest = TxtReader.getAllRequestsFromFile(nbDataNodes);
+		WorkloadReader wReaderW = new WorkloadReader(nbDataNodes,loadMode.WRITE);
+		WorkloadReader wReaderR = new WorkloadReader(nbDataNodes, loadMode.READ);
+		List<List<Object>> validRequest = wReaderW.mergedData(wReaderR);
 
 		// reducing the requestSet if necessary
 		nbRequest = Math.min(nbRequest, validRequest.get(0).size() - start);
@@ -338,11 +339,8 @@ public final class Generation {
 		long dateInitialRequest = (long) validRequest.get(0).get(0);
 
 		// Clock parameters
-
 		final double cpuFreq = cpuFrequency[0][0] * 1E6; // Hz
-		final double msPerCycle = 1_000. / (cpuFreq);
-		final int MULT_CPO = 1_000_000;
-		final Map<String, Double> cyclesType = TxtReader.calculateCyclesType(validRequest);
+
 
 		// Adding requests to device
 		Device.Builder device = Device.newBuilder();

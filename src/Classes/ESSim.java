@@ -12,8 +12,8 @@ import org.cloudbus.cloudsim.utilizationmodels.UtilizationModel.Unit;
 import org.cloudbus.cloudsim.vms.Vm;
 import org.cloudsimplus.listeners.CloudletVmEventInfo;
 
-import Classes.TxtReader.loadMode;
-import Classes.TxtReader.typeData;
+import Classes.ReaderUtils.loadMode;
+import Classes.ReaderUtils.typeData;
 import eu.recap.sim.RecapSim;
 import eu.recap.sim.cloudsim.cloudlet.IRecapCloudlet;
 import eu.recap.sim.cloudsim.cloudlet.RecapCloudlet;
@@ -108,18 +108,19 @@ public class ESSim extends RecapSim {
 
 			typeData t = typeData.CpuLoad;
 			double precision = 0.25;
+			int vmId = ReaderUtils.getMonitoringVmsList(nbDataNodes)[Integer.valueOf(componentId) - 3];
+			MonitoringReader mReader = new MonitoringReader(nbDataNodes, vmId, t);
 
-			double[] normalParams = TxtReader.getParamsDist(nbDataNodes, Integer.valueOf(componentId), t, precision,
-					load);
+			double[] normalParams = mReader.getParamsDist(componentId, precision, load);
 
-			System.out.println(componentId+" "+Arrays.toString(normalParams));
+			System.out.println(componentId + " " + Arrays.toString(normalParams));
 			try {
 				Thread.sleep(1000);
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-			
+
 			uCpuES = new UtilizationModelDynamic(Unit.PERCENTAGE, normalParams[0]);
 			uCpuES.setUtilizationUpdateFunction(
 					um -> normalParams[0] + (new Random().nextGaussian()) * normalParams[1]);

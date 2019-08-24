@@ -5,7 +5,9 @@ import java.io.File;
 import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.math3.distribution.LogNormalDistribution;
 
@@ -14,13 +16,11 @@ import Distribution.LogNormalFunc;
 
 public class WorkloadReader {
 
-	private int nbNodes;
 	private loadMode mode;
 
 	private List<List<Object>> data;
 
 	public WorkloadReader(int nbNodes, loadMode mode) {
-		this.nbNodes = nbNodes;
 		this.mode = mode;
 
 		// Building the filepath
@@ -93,14 +93,14 @@ public class WorkloadReader {
 						double avg = addSpecs.getAvgLatency();
 
 						if (requestTypes.contains(addType)) {
-
+							/*
 							// Calculating the parameter of the latency distribution
 							LogNormalFunc f = new LogNormalFunc(avg);
 							double param = addSpecs.estimateParameter(f, addSpecs.getPercentile(0.9), 1E-15);
 
 							LogNormalDistribution dist = new LogNormalDistribution(
 									Math.log(avg) - Math.pow(param, 2) / 2., param);
-
+							*/
 							nbOps /= 1;
 							// Adding requests
 							for (int op = 0; op < nbOps; op++) {
@@ -170,4 +170,42 @@ public class WorkloadReader {
 
 		return requestsMerged;
 	}
+
+	/**
+	 * Calculates the average weights of operations of each type, based on the
+	 * average latency of requests of each type</br>
+	 * These weights can help us calculate MI necessary to execute requests
+	 */
+	public Map<String, Double> calculateCyclesType() {
+
+		Map<String, Double> tam = new HashMap<String, Double>();
+		Map<String, Integer> sizes = new HashMap<String, Integer>();
+
+		for (int time = 0; time < data.get(0).size(); time++) {
+			String type = (String) data.get(1).get(time);
+			double avgLat = (double) data.get(2).get(time);
+
+			if (!sizes.containsKey(type))
+				sizes.put(type, 0);
+
+			if (tam.containsKey(type))
+				avgLat += tam.get(type);
+
+			tam.put(type, avgLat);
+			sizes.put(type, sizes.get(type) + 1);
+		}
+
+		double total = 0;
+		for (String type : tam.keySet()) {
+			tam.put(type, tam.get(type) / sizes.get(type));
+			total += tam.get(type);
+		}
+
+		for (String type : tam.keySet()) {
+			tam.put(type, tam.get(type) / total);
+		}
+
+		return tam;
+	}
+
 }
