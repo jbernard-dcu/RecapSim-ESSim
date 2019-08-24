@@ -113,14 +113,6 @@ public class ESSim extends RecapSim {
 
 			double[] normalParams = mReader.getParamsDist(componentId, precision, load);
 
-			System.out.println(componentId + " " + Arrays.toString(normalParams));
-			try {
-				Thread.sleep(1000);
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-
 			uCpuES = new UtilizationModelDynamic(Unit.PERCENTAGE, normalParams[0]);
 			uCpuES.setUtilizationUpdateFunction(
 					um -> normalParams[0] + (new Random().nextGaussian()) * normalParams[1]);

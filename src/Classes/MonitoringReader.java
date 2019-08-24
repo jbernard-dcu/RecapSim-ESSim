@@ -20,6 +20,12 @@ public class MonitoringReader {
 	private int nbNodes;
 	private List<List<Object>> data;
 
+	/**
+	 * Constructor to build the data from specified arguments
+	 * @param nbNodes
+	 * @param vm
+	 * @param type
+	 */
 	public MonitoringReader(int nbNodes, int vm, typeData type) {
 		if (nbNodes != 3 && nbNodes != 9)
 			throw new IllegalArgumentException("nbNodes can only be 3 or 9 on MonitoringReader creation");
@@ -101,12 +107,6 @@ public class MonitoringReader {
 	 * Removes values that are out of the bounds of the workload and the extreme
 	 * values</br>
 	 * Complexity = getRequestsFromFile
-	 * 
-	 * @param nbNodes
-	 * @param type
-	 * @param writeOrRead
-	 * @param vm
-	 * @return
 	 */
 	public List<List<Object>> cleanDataset(WorkloadReader wReader) {
 
@@ -116,9 +116,7 @@ public class MonitoringReader {
 
 		// clean all values out of specified bounds
 		int time = 0;
-		List<List<Object>> dataset = new ArrayList<>();
-		Collections.copy(dataset, data);
-
+		List<List<Object>> dataset = data;
 		while (time < dataset.get(1).size()) {
 			long date = ((Date) dataset.get(1).get(time)).getTime();
 			if (date <= startTime || date > endTime) {
@@ -161,13 +159,6 @@ public class MonitoringReader {
 		List<Map<Object, Double>> modesDists = getModesList(freqDist, precision);
 		// Getting the right dist based on loadMode. TODO check that the first and last
 		// modes are always the good ones
-		System.out.println(modesDists.size());
-		try {
-			Thread.sleep(1000);
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
 
 		switch (load) {
 		case WRITE:

@@ -17,7 +17,6 @@ import Distribution.LogNormalFunc;
 public class WorkloadReader {
 
 	private loadMode mode;
-
 	private List<List<Object>> data;
 
 	public WorkloadReader(int nbNodes, loadMode mode) {
@@ -73,7 +72,7 @@ public class WorkloadReader {
 				if (line.startsWith("2018") && !line.contains("Thread") && line.contains("[")) {
 
 					// Date
-					int start = 0;
+					int start = 1;
 					String stringDate = line.substring(0, 23);
 					long addDate = ReaderUtils.readTimeWorkload(stringDate);
 
@@ -94,13 +93,14 @@ public class WorkloadReader {
 
 						if (requestTypes.contains(addType)) {
 							/*
-							// Calculating the parameter of the latency distribution
-							LogNormalFunc f = new LogNormalFunc(avg);
-							double param = addSpecs.estimateParameter(f, addSpecs.getPercentile(0.9), 1E-15);
-
-							LogNormalDistribution dist = new LogNormalDistribution(
-									Math.log(avg) - Math.pow(param, 2) / 2., param);
-							*/
+							 * // Calculating the parameter of the latency distribution
+							 * LogNormalFunc f = new LogNormalFunc(avg);
+							 * double param = addSpecs.estimateParameter(f, addSpecs.getPercentile(0.9),
+							 * 1E-15);
+							 * 
+							 * LogNormalDistribution dist = new LogNormalDistribution(
+							 * Math.log(avg) - Math.pow(param, 2) / 2., param);
+							 */
 							nbOps /= 1;
 							// Adding requests
 							for (int op = 0; op < nbOps; op++) {
@@ -140,35 +140,6 @@ public class WorkloadReader {
 
 	public loadMode getMode() {
 		return this.mode;
-	}
-
-	public List<List<Object>> mergedData(WorkloadReader wReader) {
-
-		List<List<Object>> requestsW;
-		List<List<Object>> requestsR;
-
-		if (wReader.getMode() == this.mode) {
-			throw new IllegalArgumentException("Can't merge two workloads of the same mode");
-		} else {
-			if (wReader.getMode() == loadMode.READ) {
-				requestsW = this.data;
-				requestsR = wReader.getData();
-			} else {
-				requestsR = this.data;
-				requestsW = wReader.getData();
-			}
-
-		}
-
-		List<List<Object>> requestsMerged = new ArrayList<List<Object>>();
-		for (int field = 0; field < requestsW.size(); field++) {
-			List<Object> add = new ArrayList<>();
-			add.addAll(requestsW.get(field));
-			add.addAll(requestsR.get(field));
-			requestsMerged.add(add);
-		}
-
-		return requestsMerged;
 	}
 
 	/**

@@ -305,7 +305,8 @@ public final class Generation {
 
 		WorkloadReader wReaderW = new WorkloadReader(nbDataNodes,loadMode.WRITE);
 		WorkloadReader wReaderR = new WorkloadReader(nbDataNodes, loadMode.READ);
-		List<List<Object>> validRequest = wReaderW.mergedData(wReaderR);
+		
+		List<List<Object>> validRequest = ReaderUtils.mergeWorkloadsData(wReaderW, wReaderR);
 
 		// reducing the requestSet if necessary
 		nbRequest = Math.min(nbRequest, validRequest.get(0).size() - start);

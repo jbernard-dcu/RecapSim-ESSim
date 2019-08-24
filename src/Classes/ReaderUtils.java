@@ -1,18 +1,48 @@
 package Classes;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.GregorianCalendar;
+import java.util.List;
 
 public class ReaderUtils {
-	
+
 	public static enum typeData {
 		CpuLoad, DiskIOReads, DiskIOWrites, MemoryUsage, NetworkReceived, NetworkSent
 	}
-	
+
 	public enum loadMode {
 		WRITE, READ;
 	}
-	
+
+	public static List<List<Object>> mergeWorkloadsData(WorkloadReader w, WorkloadReader r) {
+		List<List<Object>> requestsW;
+		List<List<Object>> requestsR;
+
+		if (w.getMode() == r.getMode()) {
+			throw new IllegalArgumentException("Can't merge two workloads of the same mode");
+		} else {
+			if (w.getMode() == loadMode.READ) {
+				requestsW = r.getData();
+				requestsR = w.getData();
+			} else {
+				requestsR = r.getData();
+				requestsW = w.getData();
+			}
+
+		}
+
+		List<List<Object>> requestsMerged = new ArrayList<List<Object>>();
+		for (int field = 0; field < requestsW.size(); field++) {
+			List<Object> add = new ArrayList<>();
+			add.addAll(requestsW.get(field));
+			add.addAll(requestsR.get(field));
+			requestsMerged.add(add);
+		}
+
+		return requestsMerged;
+	}
+
 	/**
 	 * Returns an array containing the identifiers of VMs depending on the number of
 	 * nodes considered. This method is useful to read monitoring files from the
@@ -36,7 +66,7 @@ public class ReaderUtils {
 		}
 		return vms;
 	}
-	
+
 	public static long readTimeWorkload(String source) {
 		int years = Integer.parseInt(getWord(source, 0, "-"));
 		int months = Integer.parseInt(getWord(source, 5, "-"));
@@ -47,7 +77,7 @@ public class ReaderUtils {
 		int milliseconds = Integer.parseInt(getWord(source, 20, " "));
 		return new GregorianCalendar(years, months, days, hours, minutes, seconds).getTimeInMillis() + milliseconds;
 	}
-	
+
 	/**
 	 * Returns all the substring of source between start and the index of separator.
 	 * If separator is not contained in the string, then all the right side of the
@@ -57,7 +87,7 @@ public class ReaderUtils {
 		return source.substring(start,
 				(source.substring(start).contains(separator)) ? source.indexOf(separator, start) : source.length());
 	}
-	
+
 	/**
 	 * Reads the time in the format specified in monitoring files and returns the
 	 * value as a {@link Date}
