@@ -1,6 +1,7 @@
 package Classes;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
@@ -46,8 +47,7 @@ public class ESSim extends RecapSim {
 		 */
 
 		List<RecapCloudlet> finishedCloudlets = broker0.getCloudletFinishedList();
-		// new RecapCloudletsTableBuilder(finishedCloudlets, this.rim, this.ram,
-		// this.rwm, this.config).build();
+		new RecapCloudletsTableBuilder(finishedCloudlets, rim, ram, rwm, config).build();
 
 		// print Host CPU UTIL
 		// showCpuUtilizationForAllHosts();
@@ -62,9 +62,9 @@ public class ESSim extends RecapSim {
 		// showTableRamUtilizationForAllVms(finishTime, veList);
 
 		// output JSON File
-		outputTableAsJSON(finishedCloudlets, this.rim, this.ram, this.rwm, this.config);
+		outputTableAsJSON(finishedCloudlets, rim, ram, rwm, config);
 
-		outputTableForExcel(finishedCloudlets, this.rim, this.ram, this.rwm, this.config);
+		outputTableForExcel(finishedCloudlets, rim, ram, rwm, config);
 	}
 
 	@Override
@@ -91,19 +91,14 @@ public class ESSim extends RecapSim {
 		 */
 		// Setting maximum
 		double value = 1. / 10;// mi
-		RecapSim.setUmCpuValue(Math.toIntExact((int) (Generation.cpuFrequency[0][0] / 2)));
-
-		UtilizationModelDynamic uCpuES = new UtilizationModelDynamic(Unit.PERCENTAGE, value);
-		// UtilizationModelDynamic uCpuES = new UtilizationModelDynamic(Unit.ABSOLUTE,
-		// );
+		UtilizationModelDynamic uCpuES = new UtilizationModelDynamic(Unit.PERCENTAGE, value, value);
 
 		// check if we're executing on one of the dataNodes
 		// Multiply by 3000 to get values in MI
 		if (Integer.valueOf(componentId) >= 3) {
 			// Getting the type of the request associated with this cloudlet TODO change
 			// deviceId (working for ycsb workload)
-			Request r = ModelHelpers.getRequestTask(rwm.getDevicesList(), rwm.getDevicesList().get(0).getDeviceId(),
-					requestId);
+			Request r = ModelHelpers.getRequestTask(rwm.getDevicesList(), originDeviceId, requestId);
 			String type = r.getType();
 			loadMode load = null;
 			if (type.contentEquals("INSERT") || type.equals("UPDATE"))
@@ -117,6 +112,14 @@ public class ESSim extends RecapSim {
 			double[] normalParams = TxtReader.getParamsDist(nbDataNodes, Integer.valueOf(componentId), t, precision,
 					load);
 
+			System.out.println(componentId+" "+Arrays.toString(normalParams));
+			try {
+				Thread.sleep(1000);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
 			uCpuES = new UtilizationModelDynamic(Unit.PERCENTAGE, normalParams[0]);
 			uCpuES.setUtilizationUpdateFunction(
 					um -> normalParams[0] + (new Random().nextGaussian()) * normalParams[1]);

@@ -344,9 +344,6 @@ public final class Generation {
 		final int MULT_CPO = 1_000_000;
 		final Map<String, Double> cyclesType = TxtReader.calculateCyclesType(validRequest);
 
-		// UtilizationModel parameters
-		RecapSim.setUmCpuValue(300);
-
 		// Adding requests to device
 		Device.Builder device = Device.newBuilder();
 		for (int request = 0; request < validRequest.get(0).size(); request++) {
@@ -442,13 +439,13 @@ public final class Generation {
 			for (int dnId = 3; dnId < 3 + nbDNs; dnId++) {
 
 				// Topology #1 : non-interconnected datanodes
-				// Component.Builder dnBuilder = createShardComponent("Shard_" + (dnId - 2), ""
-				// + dnId,
-				// nodeIds.get(nodesCounter));
+				Component.Builder dnBuilder = createShardComponent("Shard_" + (dnId - 2), "" + dnId,
+						nodeIds.get(nodesCounter));
 
 				// Topology #2 : interconnected datanodes
-				Component.Builder dnBuilder = createDNComponent("DN_" + (dnId - 2), "" + dnId,
-						nodeIds.get(nodesCounter), nbDNs);
+				// Component.Builder dnBuilder = createDNComponent("DN_" + (dnId - 2), "" +
+				// dnId,
+				// nodeIds.get(nodesCounter), nbDNs);
 
 				nodesCounter = (nodesCounter == indexNmberOfNodes) ? 0 : nodesCounter + 1;
 

@@ -91,8 +91,8 @@ public class Launcher {
 		/////////////////// WORKLOAD GENERATION
 		///////////////////////////////////////////////////////////////////////////////////////////////
 
-		int nbRequest = 5;
-		int start = 10000;
+		int nbRequest = 3;
+		int start = 0;
 
 		Workload workload = Generation.GenerateYCSBWorkload(appLandscape, start, nbRequest);
 		// Workload workload = Generation.GenerateSyntheticWorkload(termDist,
