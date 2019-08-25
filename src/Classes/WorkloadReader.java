@@ -11,7 +11,7 @@ import java.util.Map;
 
 import org.apache.commons.math3.distribution.LogNormalDistribution;
 
-import Classes.ReaderUtils.loadMode;
+import Classes.TxtUtils.loadMode;
 import Distribution.LogNormalFunc;
 
 public class WorkloadReader {
@@ -74,7 +74,7 @@ public class WorkloadReader {
 					// Date
 					int start = 1;
 					String stringDate = line.substring(0, 23);
-					long addDate = ReaderUtils.readTimeWorkload(stringDate);
+					long addDate = TxtUtils.readTimeWorkload(stringDate);
 
 					// If first value, set duration to 10 000
 					long duration = (previousDate != 0) ? addDate - previousDate : 10_000;
@@ -86,7 +86,7 @@ public class WorkloadReader {
 					while (start > 0) {
 						start = line.indexOf("[", start) + 1;
 
-						SpecRequest addSpecs = new SpecRequest(ReaderUtils.getWord(line, start, "]"));
+						SpecRequest addSpecs = new SpecRequest(TxtUtils.getWord(line, start, "]"));
 						String addType = addSpecs.getType();
 						int nbOps = addSpecs.getOpCount();
 						double avg = addSpecs.getAvgLatency();

@@ -84,15 +84,18 @@ public class Launcher {
 		///////////////////////////////////////////////////////////////////////////////////////////////
 
 		ApplicationLandscape appLandscape = Generation.GenerateAppLandscape(NB_APPS, NB_PRIMARYSHARDS, infrastructure);
-		
-		//System.out.println(appLandscape.getApplications(0).getComponentsList().toString());
+
+		// System.out.println(appLandscape.getApplications(0).getComponentsList().toString());
 
 		///////////////////////////////////////////////////////////////////////////////////////////////
 		/////////////////// WORKLOAD GENERATION
 		///////////////////////////////////////////////////////////////////////////////////////////////
 
+		int startw = 10;
+		int startr = 1_500_000;
+
 		int nbRequest = 3;
-		int start = 0;
+		int start = startr;
 
 		Workload workload = Generation.GenerateYCSBWorkload(appLandscape, start, nbRequest);
 		// Workload workload = Generation.GenerateSyntheticWorkload(termDist,
@@ -106,8 +109,6 @@ public class Launcher {
 		new Launcher(infrastructure, appLandscape, workload);
 
 	}
-	
-	
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////// CONSTRUCTOR

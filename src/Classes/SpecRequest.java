@@ -48,14 +48,14 @@ public class SpecRequest {
 	 * The fields are automatically recognized and filled from this String
 	 */
 	public SpecRequest(String init) {
-		this.type = ReaderUtils.getWord(init, 0, ": ");
-		this.countOp = Integer.parseInt(ReaderUtils.getWord(init, init.indexOf("Count=") + 6, ", "));
-		this.max = Integer.parseInt(ReaderUtils.getWord(init, init.indexOf("Max=") + 4, ", "));
-		this.min = Integer.parseInt(ReaderUtils.getWord(init, init.indexOf("Min=") + 4, ", "));
-		this.avg = Double.parseDouble(ReaderUtils.getWord(init, init.indexOf("Avg=") + 4, ", "));
-		this.q90 = Integer.parseInt(ReaderUtils.getWord(init, init.indexOf("90=") + 3, ", "));
-		this.q99 = Integer.parseInt(ReaderUtils.getWord(init, init.indexOf("99=") + 3, ", "));
-		this.q999 = Integer.parseInt(ReaderUtils.getWord(init, init.indexOf("99.9=") + 5, ", "));
+		this.type = TxtUtils.getWord(init, 0, ": ");
+		this.countOp = Integer.parseInt(TxtUtils.getWord(init, init.indexOf("Count=") + 6, ", "));
+		this.max = Integer.parseInt(TxtUtils.getWord(init, init.indexOf("Max=") + 4, ", "));
+		this.min = Integer.parseInt(TxtUtils.getWord(init, init.indexOf("Min=") + 4, ", "));
+		this.avg = Double.parseDouble(TxtUtils.getWord(init, init.indexOf("Avg=") + 4, ", "));
+		this.q90 = Integer.parseInt(TxtUtils.getWord(init, init.indexOf("90=") + 3, ", "));
+		this.q99 = Integer.parseInt(TxtUtils.getWord(init, init.indexOf("99=") + 3, ", "));
+		this.q999 = Integer.parseInt(TxtUtils.getWord(init, init.indexOf("99.9=") + 5, ", "));
 		this.q9999 = Integer.parseInt(init.substring(init.indexOf("99.99=") + 6));
 	}
 

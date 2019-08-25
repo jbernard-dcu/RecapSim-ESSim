@@ -12,8 +12,8 @@ import org.cloudbus.cloudsim.utilizationmodels.UtilizationModel.Unit;
 import org.cloudbus.cloudsim.vms.Vm;
 import org.cloudsimplus.listeners.CloudletVmEventInfo;
 
-import Classes.ReaderUtils.loadMode;
-import Classes.ReaderUtils.typeData;
+import Classes.TxtUtils.loadMode;
+import Classes.TxtUtils.typeData;
 import eu.recap.sim.RecapSim;
 import eu.recap.sim.cloudsim.cloudlet.IRecapCloudlet;
 import eu.recap.sim.cloudsim.cloudlet.RecapCloudlet;
@@ -96,22 +96,25 @@ public class ESSim extends RecapSim {
 		// check if we're executing on one of the dataNodes
 		// Multiply by 3000 to get values in MI
 		if (Integer.valueOf(componentId) >= 3) {
+			
 			// Getting the type of the request associated with this cloudlet TODO change
 			// deviceId (working for ycsb workload)
-			Request r = ModelHelpers.getRequestTask(rwm.getDevicesList(), originDeviceId, requestId);
-			String type = r.getType();
-			loadMode load = null;
+			String type = ModelHelpers.getRequestTask(rwm.getDevicesList(), originDeviceId, requestId).getType();
+			loadMode mode = null;
 			if (type.contentEquals("INSERT") || type.equals("UPDATE"))
-				load = loadMode.WRITE;
+				mode = loadMode.WRITE;
 			if (type.contentEquals("READ"))
-				load = loadMode.READ;
+				mode = loadMode.READ;
 
-			typeData t = typeData.CpuLoad;
-			double precision = 0.25;
-			int vmId = ReaderUtils.getMonitoringVmsList(nbDataNodes)[Integer.valueOf(componentId) - 3];
-			MonitoringReader mReader = new MonitoringReader(nbDataNodes, vmId, t);
+			int vmId = TxtUtils.getMonitoringVmsList(nbDataNodes)[Integer.valueOf(componentId) - 3];
+			MonitoringReader mReader = MonitoringReader.create(nbDataNodes, vmId, typeData.CpuLoad).filter(mode);
+			
+			TxtUtils.print(mReader.getData().toString(), 5000);
 
-			double[] normalParams = mReader.getParamsDist(componentId, precision, load);
+			double precision = 1./mReader.getNbPoints();
+			double[] normalParams = mReader.getParamsDist(componentId, precision, mode);
+			
+			TxtUtils.print(Arrays.toString(normalParams), 2000);
 
 			uCpuES = new UtilizationModelDynamic(Unit.PERCENTAGE, normalParams[0]);
 			uCpuES.setUtilizationUpdateFunction(

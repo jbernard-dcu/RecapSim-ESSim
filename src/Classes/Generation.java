@@ -13,8 +13,8 @@ import org.apache.commons.math3.util.Pair;
 
 import Classes.Parameters.path;
 import Classes.Parameters.typeParam;
-import Classes.ReaderUtils.loadMode;
-import Classes.ReaderUtils.typeData;
+import Classes.TxtUtils.loadMode;
+import Classes.TxtUtils.typeData;
 import Main.Launcher;
 import eu.recap.sim.models.ApplicationModel.Application;
 import eu.recap.sim.models.ApplicationModel.ApplicationLandscape;
@@ -78,7 +78,7 @@ public final class Generation {
 	static int bw = 10_000; // 10Gbit/s
 
 	// Repartition of requests between data nodes for CPU values
-	static double[] repartNodes = TxtReader.calculateRepartNodes(nbDataNodes, typeData.CpuLoad);
+	static double[] repartNodes = TxtUtils.calculateRepartNodes(nbDataNodes, typeData.CpuLoad);
 
 	int randNbDataNodesPerRequest = Launcher.randGint(nbDataNodes / 2., nbDataNodes / 6., 0, nbDataNodes);
 	static int nbDataNodesPerRequest = 6;
@@ -306,7 +306,7 @@ public final class Generation {
 		WorkloadReader wReaderW = new WorkloadReader(nbDataNodes,loadMode.WRITE);
 		WorkloadReader wReaderR = new WorkloadReader(nbDataNodes, loadMode.READ);
 		
-		List<List<Object>> validRequest = ReaderUtils.mergeWorkloadsData(wReaderW, wReaderR);
+		List<List<Object>> validRequest = TxtUtils.mergeWorkloadsData(wReaderW, wReaderR);
 
 		// reducing the requestSet if necessary
 		nbRequest = Math.min(nbRequest, validRequest.get(0).size() - start);

@@ -11,8 +11,8 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
-import Classes.ReaderUtils.typeData;
-import Classes.ReaderUtils.loadMode;
+import Classes.TxtUtils.loadMode;
+import Classes.TxtUtils.typeData;
 
 @SuppressWarnings("unchecked")
 public class MonitoringReader {
@@ -22,11 +22,12 @@ public class MonitoringReader {
 
 	/**
 	 * Constructor to build the data from specified arguments
+	 * 
 	 * @param nbNodes
 	 * @param vm
 	 * @param type
 	 */
-	public MonitoringReader(int nbNodes, int vm, typeData type) {
+	private MonitoringReader(int nbNodes, int vm, typeData type) {
 		if (nbNodes != 3 && nbNodes != 9)
 			throw new IllegalArgumentException("nbNodes can only be 3 or 9 on MonitoringReader creation");
 
@@ -80,10 +81,10 @@ public class MonitoringReader {
 			}
 
 			while ((line = bufferedReader.readLine()) != null) {
-				double addRelTime = Double.parseDouble(ReaderUtils.getWord(line, 0, ","));
-				Date addAbsTime = ReaderUtils.readTimeMonitoring(ReaderUtils.getWord(line, line.indexOf(",") + 1, ","));
+				double addRelTime = Double.parseDouble(TxtUtils.getWord(line, 0, ","));
+				Date addAbsTime = TxtUtils.readTimeMonitoring(TxtUtils.getWord(line, line.indexOf(",") + 1, ","));
 				double addValue = Double
-						.parseDouble(ReaderUtils.getWord(line, line.indexOf(",", line.indexOf(",") + 1) + 1, ","));
+						.parseDouble(TxtUtils.getWord(line, line.indexOf(",", line.indexOf(",") + 1) + 1, ","));
 
 				columns.get(0).add(addRelTime);
 				columns.get(1).add(addAbsTime);
@@ -99,16 +100,20 @@ public class MonitoringReader {
 		this.data = columns;
 	}
 
+	public static MonitoringReader create(int nbNodes, int vm, typeData type) {
+		return new MonitoringReader(nbNodes, vm, type);
+	}
+
 	public List<List<Object>> getData() {
 		return this.data;
 	}
 
 	/**
-	 * Removes values that are out of the bounds of the workload and the extreme
-	 * values</br>
-	 * Complexity = getRequestsFromFile
+	 * Filter the values out of bound of the workload associated with this load mode
 	 */
-	public List<List<Object>> cleanDataset(WorkloadReader wReader) {
+	public MonitoringReader filter(loadMode mode) {
+
+		WorkloadReader wReader = new WorkloadReader(nbNodes, mode);
 
 		List<List<Object>> validRequest = wReader.getData();
 		long startTime = (Long) validRequest.get(0).get(0);
@@ -116,19 +121,18 @@ public class MonitoringReader {
 
 		// clean all values out of specified bounds
 		int time = 0;
-		List<List<Object>> dataset = data;
-		while (time < dataset.get(1).size()) {
-			long date = ((Date) dataset.get(1).get(time)).getTime();
+		while (time < data.get(1).size()) {
+			long date = ((Date) data.get(1).get(time)).getTime();
 			if (date <= startTime || date > endTime) {
-				for (int field = 0; field < dataset.size(); field++) {
-					dataset.get(field).remove(time);
+				for (int field = 0; field < data.size(); field++) {
+					data.get(field).remove(time);
 				}
 			} else {
 				time++;
 			}
 		}
 
-		return dataset;
+		return this;
 	}
 
 	/**
@@ -160,6 +164,8 @@ public class MonitoringReader {
 		// Getting the right dist based on loadMode. TODO check that the first and last
 		// modes are always the good ones
 
+		TxtUtils.print("" + modesDists.size(), 2000);
+
 		switch (load) {
 		case WRITE:
 			return estimateGaussianDist(modesDists.get(0));
@@ -190,7 +196,8 @@ public class MonitoringReader {
 	}
 
 	/**
-	 * Plots and returns the histogram of the specified data, the precision must be
+	 * Returns the distribution by classes of the specified data, the precision must
+	 * be
 	 * set
 	 * 
 	 * @param nbNodes
@@ -201,6 +208,8 @@ public class MonitoringReader {
 
 		TreeMap<Double, Double> res = new TreeMap<Double, Double>();
 		final int nbClasses = 1 + (int) (Collections.max(dataset) / precision);
+		
+		
 
 		for (int i = 0; i <= nbClasses; i++) {
 			res.put(precision * i, 0.);
@@ -269,5 +278,9 @@ public class MonitoringReader {
 		// TODO merge maps in the case they are not disjointed
 
 		return foundCrops;
+	}
+
+	public int getNbPoints() {
+		return data.get(0).size();
 	}
 }
