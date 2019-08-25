@@ -19,7 +19,7 @@ public class WorkloadReader {
 	private loadMode mode;
 	private List<List<Object>> data;
 
-	public WorkloadReader(int nbNodes, loadMode mode) {
+	private WorkloadReader(int nbNodes, loadMode mode) {
 		this.mode = mode;
 
 		// Building the filepath
@@ -134,6 +134,10 @@ public class WorkloadReader {
 
 	}
 
+	public static WorkloadReader create(int nbNodes, loadMode mode) {
+		return new WorkloadReader(nbNodes, mode);
+	}
+	
 	public List<List<Object>> getData() {
 		return this.data;
 	}

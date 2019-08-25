@@ -303,8 +303,8 @@ public final class Generation {
 
 		long startTime = System.currentTimeMillis();
 
-		WorkloadReader wReaderW = new WorkloadReader(nbDataNodes,loadMode.WRITE);
-		WorkloadReader wReaderR = new WorkloadReader(nbDataNodes, loadMode.READ);
+		WorkloadReader wReaderW = WorkloadReader.create(nbDataNodes,loadMode.WRITE);
+		WorkloadReader wReaderR = WorkloadReader.create(nbDataNodes, loadMode.READ);
 		
 		List<List<Object>> validRequest = TxtUtils.mergeWorkloadsData(wReaderW, wReaderR);
 

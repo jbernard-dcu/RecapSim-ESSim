@@ -14,7 +14,7 @@ import Classes.Document;
 import Classes.ESSim;
 import Classes.Generation;
 import Classes.Shard;
-import eu.recap.sim.RecapSim;
+
 import eu.recap.sim.models.ApplicationModel.ApplicationLandscape;
 import eu.recap.sim.models.ExperimentModel.Experiment;
 import eu.recap.sim.models.InfrastructureModel.Infrastructure;
@@ -26,13 +26,6 @@ public class Launcher {
 	 * Instance variables
 	 */
 	// synthetic workload
-
-	// common
-	private Infrastructure infrastructure;
-	private ApplicationLandscape appLandscape;
-	private Workload workload;
-	private Experiment config;
-	private RecapSim recapExperiment;
 
 	/*
 	 * Parameters synthetic workload
@@ -106,7 +99,7 @@ public class Launcher {
 		/////////////////// RESULTS
 		///////////////////////////////////////////////////////////////////////////////////////////////
 
-		new Launcher(infrastructure, appLandscape, workload);
+		launchSimulation(infrastructure, appLandscape, workload);
 
 	}
 
@@ -115,23 +108,17 @@ public class Launcher {
 	/////////////////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	public Launcher(Infrastructure rim, ApplicationLandscape ram, Workload rwm) {
-		this.infrastructure = rim;
-
-		this.appLandscape = ram;
-
-		this.workload = rwm;
-
+	public static void launchSimulation(Infrastructure rim, ApplicationLandscape ram, Workload rwm) {
 		Experiment.Builder configBuilder = Experiment.newBuilder();
 		configBuilder.setName("General config");
 		configBuilder.setDuration(200);
 		configBuilder.setApplicationLandscape(ram).setInfrastructure(rim).setWorkload(rwm);
-		this.config = configBuilder.build();
+		Experiment config = configBuilder.build();
 
-		this.recapExperiment = new ESSim();
+		ESSim esExperiment = new ESSim();
 
-		String simulationId = recapExperiment.StartSimulation(config);
-		System.out.println("Simulation is:" + recapExperiment.SimulationStatus(simulationId));
+		String simulationId = esExperiment.StartSimulation(config);
+		System.out.println("Simulation is:" + esExperiment.SimulationStatus(simulationId));
 	}
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -267,10 +254,6 @@ public class Launcher {
 			index += len + 1;
 		}
 		return res;
-	}
-
-	public RecapSim getRecapExperiment() {
-		return recapExperiment;
 	}
 
 }

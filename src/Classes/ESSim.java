@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
+import org.apache.commons.math3.distribution.NormalDistribution;
 import org.cloudbus.cloudsim.utilizationmodels.UtilizationModel;
 import org.cloudbus.cloudsim.utilizationmodels.UtilizationModelDynamic;
 import org.cloudbus.cloudsim.utilizationmodels.UtilizationModelFull;
@@ -96,9 +97,7 @@ public class ESSim extends RecapSim {
 		// check if we're executing on one of the dataNodes
 		// Multiply by 3000 to get values in MI
 		if (Integer.valueOf(componentId) >= 3) {
-			
-			// Getting the type of the request associated with this cloudlet TODO change
-			// deviceId (working for ycsb workload)
+
 			String type = ModelHelpers.getRequestTask(rwm.getDevicesList(), originDeviceId, requestId).getType();
 			loadMode mode = null;
 			if (type.contentEquals("INSERT") || type.equals("UPDATE"))
@@ -107,18 +106,34 @@ public class ESSim extends RecapSim {
 				mode = loadMode.READ;
 
 			int vmId = TxtUtils.getMonitoringVmsList(nbDataNodes)[Integer.valueOf(componentId) - 3];
-			MonitoringReader mReader = MonitoringReader.create(nbDataNodes, vmId, typeData.CpuLoad).filter(mode);
-			
-			TxtUtils.print(mReader.getData().toString(), 5000);
 
-			double precision = 1./mReader.getNbPoints();
-			double[] normalParams = mReader.getParamsDist(componentId, precision, mode);
-			
-			TxtUtils.print(Arrays.toString(normalParams), 2000);
+			/*
+			 * UtilizationModel for CPU utilization
+			 */
+
+			MonitoringReader mReaderCpu = MonitoringReader.create(nbDataNodes, vmId, typeData.CpuLoad).filter(mode);
+			double precision = Math.log(mReaderCpu.getNbPoints()) / 2 * Math.log(2);
+			double[] normalParams = mReaderCpu.getParamsDist(precision);
 
 			uCpuES = new UtilizationModelDynamic(Unit.PERCENTAGE, normalParams[0]);
 			uCpuES.setUtilizationUpdateFunction(
-					um -> normalParams[0] + (new Random().nextGaussian()) * normalParams[1]);
+					um -> 0.01 * (normalParams[0] + (new Random().nextGaussian()) * normalParams[1]));
+
+			/*
+			 * Statistical models for filesizes
+			 */
+
+			MonitoringReader mReaderNetworkReceived = MonitoringReader
+					.create(nbDataNodes, vmId, typeData.NetworkReceived).filter(mode);
+			MonitoringReader mReaderNetworkSent = MonitoringReader.create(nbDataNodes, vmId, typeData.NetworkSent)
+					.filter(mode);
+
+			double[] paramsReceived = mReaderNetworkReceived.getParamsDist(0.25);
+			double[] paramsSent = mReaderNetworkSent.getParamsDist(0.25);
+
+			inputFileSize = (long) (paramsReceived[0] + (new Random().nextGaussian() * paramsReceived[1]));
+			outputFileSize = (long) (paramsSent[0] + (new Random().nextGaussian() * paramsSent[1]));
+
 		}
 
 		/*

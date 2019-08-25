@@ -7,9 +7,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
 import java.util.TreeMap;
-import java.util.stream.Collectors;
 
 import Classes.TxtUtils.loadMode;
 import Classes.TxtUtils.typeData;
@@ -108,12 +106,17 @@ public class MonitoringReader {
 		return this.data;
 	}
 
+	public int getNbPoints() {
+		return data.get(0).size();
+	}
+
 	/**
-	 * Filter the values out of bound of the workload associated with this load mode
+	 * Filters the values out of bound of the workload associated with this load
+	 * mode. To separate the two modes, this method must be called
 	 */
 	public MonitoringReader filter(loadMode mode) {
 
-		WorkloadReader wReader = new WorkloadReader(nbNodes, mode);
+		WorkloadReader wReader = WorkloadReader.create(nbNodes, mode);
 
 		List<List<Object>> validRequest = wReader.getData();
 		long startTime = (Long) validRequest.get(0).get(0);
@@ -146,53 +149,34 @@ public class MonitoringReader {
 	 * @param load
 	 * @return
 	 */
-	public double[] getParamsDist(String componentId, double precision, loadMode load) {
-		int compId = Integer.valueOf(componentId);
-
-		if (compId < 3 || compId > 2 + nbNodes)
-			throw new IllegalArgumentException(
-					"componentId must point to one of the datanodes (3 <= componentId <= 2+nbDNs)");
+	public double[] getParamsDist(double precision) {
 
 		// TODO check typeData to avoid having less than two modes
 
 		List<Double> dataset = (List<Double>) (List<?>) data.get(2);
 
 		// Calculating specified freqDist
-		TreeMap<Double, Double> freqDist = getFrequencyDist(dataset, precision);
-		// Getting sub distributions
-		List<Map<Object, Double>> modesDists = getModesList(freqDist, precision);
-		// Getting the right dist based on loadMode. TODO check that the first and last
-		// modes are always the good ones
+		TreeMap<Double, Integer> freqDist = getFrequencyDist(dataset, precision);
 
-		TxtUtils.print("" + modesDists.size(), 2000);
-
-		switch (load) {
-		case WRITE:
-			return estimateGaussianDist(modesDists.get(0));
-		case READ:
-			return estimateGaussianDist(modesDists.get(modesDists.size() - 1));
-		}
-
-		return null;
+		return estimateGaussianDist(freqDist);
 	}
 
-	/**
-	 * Returns estimators of the parameters of a normal distribution fitting the
-	 * dist given. Does not check if the data given really has a normal
-	 * distribution before calculation
-	 * 
-	 * @param dist
-	 * @return
-	 */
-	private static double[] estimateGaussianDist(Map<Object, Double> dist) {
-		List<Double> listKeyset = (List<Double>) (List<?>) (new ArrayList<>(dist.keySet()));
-		double avg = listKeyset.stream().mapToDouble(s -> (Double) s).average().getAsDouble();
+	private double[] estimateGaussianDist(TreeMap<Double, Integer> freqDist) {
+		double avg = 0;
+		int count = 0;
+		for (double value : freqDist.keySet()) {
+			avg += value * freqDist.get(value);
+			count += freqDist.get(value);
+		}
+		avg /= count;
 
-		double meanSquares = listKeyset.stream().mapToDouble(s -> Math.pow(s, 2)).average().getAsDouble();
-		double std = Math.sqrt(meanSquares - Math.pow(avg, 2));
+		double std = 0;
+		for (double value : freqDist.keySet()) {
+			std += Math.pow(value - avg, 2) * freqDist.get(value);
+		}
+		std = Math.sqrt(std / count);
 
 		return new double[] { avg, std };
-
 	}
 
 	/**
@@ -204,15 +188,13 @@ public class MonitoringReader {
 	 * @param type
 	 * @param vm
 	 */
-	private static TreeMap<Double, Double> getFrequencyDist(List<Double> dataset, double precision) {
+	private TreeMap<Double, Integer> getFrequencyDist(List<Double> dataset, double precision) {
 
-		TreeMap<Double, Double> res = new TreeMap<Double, Double>();
+		TreeMap<Double, Integer> res = new TreeMap<Double, Integer>();
 		final int nbClasses = 1 + (int) (Collections.max(dataset) / precision);
-		
-		
 
 		for (int i = 0; i <= nbClasses; i++) {
-			res.put(precision * i, 0.);
+			res.put(precision * i, 0);
 		}
 
 		for (double value : dataset) {
@@ -225,10 +207,10 @@ public class MonitoringReader {
 		return res;
 	}
 
-	private static void printHistogram(TreeMap<Double, Double> freq, long waitingTimeMillis) {
-		for (double key : freq.keySet()) {
+	private void printHistogram(TreeMap<Double, Integer> res, long waitingTimeMillis) {
+		for (double key : res.keySet()) {
 			String s = "";
-			for (int i = 0; i < freq.get(key).intValue(); i++) {
+			for (int i = 0; i < res.get(key).intValue(); i++) {
 				s += "o";
 			}
 			System.out.println(key + " " + s);
@@ -240,47 +222,4 @@ public class MonitoringReader {
 		}
 	}
 
-	/**
-	 * Splits the observed frequency distribution in many new frequency
-	 * distributions corresponding o the different modes
-	 * 
-	 * @param freqDist
-	 * @param precision
-	 * @return
-	 */
-	private static List<Map<Object, Double>> getModesList(TreeMap<Double, Double> freqDist, double precision) {
-
-		double startCrop = 0;
-		int cN = 0;
-		List<Map<Object, Double>> foundCrops = new ArrayList<>();
-		for (double key : freqDist.keySet()) {
-			if (freqDist.get(key) != 0) {
-				if (cN == 1)
-					startCrop = key;
-				cN++;
-			} else {
-				if (cN >= 3) {
-					List<Double> filter = new ArrayList<>();
-					for (double cle = Math.max(0, startCrop - precision); cle < Math.min(key + precision,
-							freqDist.keySet().size()); cle += precision) {
-						filter.add(cle);
-					}
-
-					foundCrops.add(filter.stream().filter(freqDist::containsKey)
-							.collect(Collectors.toMap(k -> k, freqDist::get)));
-				}
-
-				cN = 0;
-
-			}
-		}
-
-		// TODO merge maps in the case they are not disjointed
-
-		return foundCrops;
-	}
-
-	public int getNbPoints() {
-		return data.get(0).size();
-	}
 }
