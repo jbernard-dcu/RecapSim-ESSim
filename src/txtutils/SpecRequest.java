@@ -8,7 +8,7 @@ import org.apache.commons.math3.analysis.ParametricUnivariateFunction;
 import org.apache.commons.math3.fitting.SimpleCurveFitter;
 import org.apache.commons.math3.fitting.WeightedObservedPoints;
 
-import Distribution.*;
+import distribution.*;
 
 /***
  * Class modeling the specifications of a request, as given in the workload

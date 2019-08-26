@@ -11,7 +11,7 @@ import java.util.Map;
 
 import org.apache.commons.math3.distribution.LogNormalDistribution;
 
-import Distribution.LogNormalFunc;
+import distribution.LogNormalFunc;
 import txtutils.TxtUtils.loadMode;
 
 public class WorkloadReader {
