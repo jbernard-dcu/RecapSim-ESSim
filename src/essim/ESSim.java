@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.commons.math3.distribution.NormalDistribution;
 import org.cloudbus.cloudsim.utilizationmodels.UtilizationModel;
@@ -40,6 +42,10 @@ public class ESSim extends RecapSim {
 
 	// Proba distributions for filesizes
 	NetworkIO distIO = NetworkIO.create(nbDataNodes);
+
+	// List of apis incoming datanodes
+	List<String> dnApis = Stream.iterate(3, n -> n + 1).limit(2 + nbDataNodes).map(s -> s + "_1")
+			.collect(Collectors.toList());
 
 	//////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////// OVERRIDES
@@ -116,7 +122,6 @@ public class ESSim extends RecapSim {
 			/*
 			 * UtilizationModel for CPU utilization
 			 */
-
 			MonitoringReader mReaderCpu = MonitoringReader.create(nbDataNodes, vmId, typeData.CpuLoad).filter(mode);
 			double precision = Math.log(mReaderCpu.getNbPoints()) / 2 * Math.log(2);
 			double[] normalParams = mReaderCpu.getParamsDist(precision);
@@ -126,10 +131,13 @@ public class ESSim extends RecapSim {
 					um -> 0.01 * (normalParams[0] + (new Random().nextGaussian()) * normalParams[1]));
 
 			/*
-			 * Random models for filesizes
+			 * Random values for inputFileSize
 			 */
-			inputFileSize = (long) distIO.sampleReceivedMB(componentId, mode);
-			outputFileSize = (long) distIO.sampleSentMB(componentId, mode);
+			if (apiId.contentEquals("2_2"))
+				inputFileSize = (long) distIO.sumSampleSent(mode);
+			
+			if (dnApis.contains(apiId))
+				inputFileSize = (long) distIO.sampleReceivedMB(componentId, mode);
 
 		}
 

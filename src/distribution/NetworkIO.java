@@ -1,7 +1,10 @@
 package distribution;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.commons.math3.distribution.NormalDistribution;
 import org.apache.commons.math3.util.Pair;
@@ -11,6 +14,14 @@ import utils.TxtUtils;
 import utils.TxtUtils.loadMode;
 import utils.TxtUtils.typeData;
 
+/***
+ * The class that holds the NetworkIO distribution extracted from monitoring
+ * files. The distributions are stored in Maps, associating each
+ * NormalDistribution with a Pair<String,loadMode>
+ * 
+ * @author Joseph
+ *
+ */
 public class NetworkIO {
 
 	private int nbNodes;
@@ -74,4 +85,15 @@ public class NetworkIO {
 
 	}
 
+	public double sumSampleSent(loadMode mode) {
+		double sum = 0;
+
+		List<String> compIds = Stream.iterate(3, n -> n + 1).limit(2 + nbNodes).map(s -> "" + s)
+				.collect(Collectors.toList());
+
+		for (String compId : compIds) {
+			sum += sampleSentMB(compId, mode);
+		}
+		return sum;
+	}
 }
