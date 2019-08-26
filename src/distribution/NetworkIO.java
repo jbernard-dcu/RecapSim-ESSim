@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.apache.commons.math3.distribution.NormalDistribution;
+import org.apache.commons.math3.distribution.RealDistribution;
 
 import utils.MonitoringReader;
 import utils.TxtUtils;
@@ -25,25 +26,25 @@ public class NetworkIO {
 
 	private int nbNodes;
 	private int[] vmIds;
-	private Map<String, NormalDistribution> distReceived;
-	private Map<String, NormalDistribution> distSent;
+	private Map<String, RealDistribution> distReceived;
+	private Map<String, RealDistribution> distSent;
 
 	private NetworkIO(int nbNodes) {
 		this.nbNodes = nbNodes;
 		this.vmIds = TxtUtils.getMonitoringVmsList(nbNodes);
-		this.distReceived = new HashMap<String, NormalDistribution>();
-		this.distSent = new HashMap<String, NormalDistribution>();
+		this.distReceived = new HashMap<String, RealDistribution>();
+		this.distSent = new HashMap<String, RealDistribution>();
 	}
 
 	public static NetworkIO create(int nbNodes) {
 		return new NetworkIO(nbNodes);
 	}
 
-	private void setDistReceived(Map<String, NormalDistribution> map) {
+	private void setDistReceived(Map<String, RealDistribution> map) {
 		this.distReceived = map;
 	}
 
-	private void setDistSent(Map<String, NormalDistribution> newDist) {
+	private void setDistSent(Map<String, RealDistribution> newDist) {
 		this.distSent = newDist;
 	}
 
@@ -55,7 +56,7 @@ public class NetworkIO {
 		return sampleIOMB(componentId, mode, distSent, typeData.NetworkSent);
 	}
 
-	private double sampleIOMB(String componentId, loadMode mode, Map<String, NormalDistribution> map, typeData type) {
+	private double sampleIOMB(String componentId, loadMode mode, Map<String, RealDistribution> map, typeData type) {
 
 		String key = componentId + mode;
 

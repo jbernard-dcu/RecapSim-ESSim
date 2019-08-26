@@ -85,7 +85,7 @@ public final class Generation {
 	static double[] repartNodes = TxtUtils.calculateRepartNodes(nbDataNodes, typeData.CpuLoad);
 
 	int randNbDataNodesPerRequest = Launcher.randGint(nbDataNodes / 2., nbDataNodes / 6., 0, nbDataNodes);
-	static int nbDataNodesPerRequest = 6;
+	static int nbDataNodesPerRequest = Launcher.NB_REPLICAS;
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////// GENERATORS
@@ -297,7 +297,6 @@ public final class Generation {
 	/**
 	 * Method to generate a workload from the input data (3/9 nodes).
 	 * 
-	 * @param numberNodes : choose 3 or 9 to choose the workload
 	 * @param nbRequest   : set to negative or 0 to use full workload, else the
 	 *                    workload is reduced to <code>nbRequest</code> requests
 	 * @throws InterruptedException

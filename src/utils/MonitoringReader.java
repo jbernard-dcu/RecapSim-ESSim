@@ -20,9 +20,9 @@ public class MonitoringReader {
 
 	public static void main(String[] args) {
 		MonitoringReader mReader = MonitoringReader.create(9, 121, typeData.MemoryUsage).filter(loadMode.WRITE);
-		
-		List<Double> dataset = (List<Double>)(List<?>)mReader.getData().get(2);
-		
+
+		List<Double> dataset = (List<Double>) (List<?>) mReader.getData().get(2);
+
 		double precision = 1E-3;
 		mReader.getFrequencyDist(dataset, precision);
 	}
@@ -40,49 +40,16 @@ public class MonitoringReader {
 
 		this.nbNodes = nbNodes;
 
-		String path = "/elasticsearch_nodes-" + nbNodes + "_replication-3/nodes-" + nbNodes
-				+ "_replication-3/evaluation_run_2018_11_25-";
-		if (nbNodes == 3)
-			path += "19_10/monitoring/";
-		if (nbNodes == 9)
-			path += "22_40/monitoring/";
-
-		String fileName;
-		switch (type) {
-		case CpuLoad:
-			fileName = "cpuLoad";
-			break;
-		case DiskIOReads:
-			fileName = "disk-io-reads";
-			break;
-		case DiskIOWrites:
-			fileName = "disk-io-writes";
-			break;
-		case MemoryUsage:
-			fileName = "memory-usage";
-			break;
-		case NetworkReceived:
-			fileName = "network-received";
-			break;
-		case NetworkSent:
-			fileName = "network-sent";
-			break;
-		default:
-			fileName = "";
-		}
-		fileName += "-node-134.60.64." + vm + ".txt";
-		String filepath = System.getProperty("user.dir") + File.separator + path + File.separator + fileName;
-
 		List<List<Object>> columns = new ArrayList<List<Object>>();
 
 		try {
-			File file = new File(filepath);
+			File file = new File(getFilePath(type,vm));
 			FileReader fileReader = new FileReader(file);
 			BufferedReader bufferedReader = new BufferedReader(fileReader);
 
 			String line = bufferedReader.readLine();
 
-			// chnge the 3 t have more field columns in the returning object
+			// change the 3 to have more field columns in the returning object
 			for (int field = 0; field < 3; field++) {
 				columns.add(new ArrayList<Object>());
 			}
@@ -119,17 +86,52 @@ public class MonitoringReader {
 		return data.get(0).size();
 	}
 
+	private String getFilePath(typeData type, int vmId) {
+		String path = "/elasticsearch_nodes-" + nbNodes + "_replication-3/nodes-" + nbNodes
+				+ "_replication-3/evaluation_run_2018_11_25-";
+		if (nbNodes == 3)
+			path += "19_10/monitoring/";
+		if (nbNodes == 9)
+			path += "22_40/monitoring/";
+
+		String fileName;
+		switch (type) {
+		case CpuLoad:
+			fileName = "cpuLoad";
+			break;
+		case DiskIOReads:
+			fileName = "disk-io-reads";
+			break;
+		case DiskIOWrites:
+			fileName = "disk-io-writes";
+			break;
+		case MemoryUsage:
+			fileName = "memory-usage";
+			break;
+		case NetworkReceived:
+			fileName = "network-received";
+			break;
+		case NetworkSent:
+			fileName = "network-sent";
+			break;
+		default:
+			fileName = "";
+		}
+		fileName += "-node-134.60.64." + vmId + ".txt";
+		return System.getProperty("user.dir") + File.separator + path + File.separator + fileName;
+	}
+	
 	/**
 	 * Filters the values out of bound of the workload associated with this load
 	 * mode. To separate the two modes, this method must be called
 	 */
 	public MonitoringReader filter(loadMode mode) {
 
-		WorkloadReader wReader = WorkloadReader.create(nbNodes, mode);
-
-		List<List<Object>> validRequest = wReader.getData();
+		List<List<Object>> validRequest = WorkloadReader.create(nbNodes, mode).getData();
 		long startTime = (Long) validRequest.get(0).get(0);
 		long endTime = (Long) validRequest.get(0).get(validRequest.get(0).size() - 1);
+
+		TxtUtils.print("datasize:" + data.get(0).size(), 1000);
 
 		// clean all values out of specified bounds
 		int time = 0;
@@ -143,6 +145,8 @@ public class MonitoringReader {
 				time++;
 			}
 		}
+
+		TxtUtils.print("datasize:" + data.get(0).size(), 1000);
 
 		return this;
 	}
@@ -159,6 +163,8 @@ public class MonitoringReader {
 		// TODO check typeData to avoid having less than two modes
 
 		List<Double> dataset = (List<Double>) (List<?>) data.get(2);
+
+		TxtUtils.print(data.toString(), 1000);
 
 		// Calculating specified freqDist
 		TreeMap<Double, Integer> freqDist = getFrequencyDist(dataset, precision);
@@ -194,6 +200,7 @@ public class MonitoringReader {
 	private TreeMap<Double, Integer> getFrequencyDist(List<Double> dataset, double precision) {
 
 		TreeMap<Double, Integer> res = new TreeMap<Double, Integer>();
+
 		final int nbClasses = 1 + (int) (Collections.max(dataset) / precision);
 
 		for (int i = 0; i <= nbClasses; i++) {
@@ -216,7 +223,7 @@ public class MonitoringReader {
 			for (int i = 0; i < res.get(key).intValue(); i++) {
 				s += "o";
 			}
-			System.out.println(Math.round(key*1000.)/1000. + " " + s);
+			System.out.println(Math.round(key * 1000.) / 1000. + " " + s);
 			try {
 				Thread.sleep(waitingTimeMillis);
 			} catch (InterruptedException e) {
