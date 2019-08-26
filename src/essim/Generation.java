@@ -85,7 +85,7 @@ public final class Generation {
 	static double[] repartNodes = TxtUtils.calculateRepartNodes(nbDataNodes, typeData.CpuLoad);
 
 	int randNbDataNodesPerRequest = Launcher.randGint(nbDataNodes / 2., nbDataNodes / 6., 0, nbDataNodes);
-	static int nbDataNodesPerRequest = Launcher.NB_REPLICAS;
+	static int nbDataNodesPerRequest = 1 + Launcher.NB_REPLICAS;
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////// GENERATORS
@@ -297,8 +297,8 @@ public final class Generation {
 	/**
 	 * Method to generate a workload from the input data (3/9 nodes).
 	 * 
-	 * @param nbRequest   : set to negative or 0 to use full workload, else the
-	 *                    workload is reduced to <code>nbRequest</code> requests
+	 * @param nbRequest : set to negative or 0 to use full workload, else the
+	 *                  workload is reduced to <code>nbRequest</code> requests
 	 * @throws InterruptedException
 	 */
 	public static Workload GenerateYCSBWorkload(ApplicationLandscape appLandscape, int start, int nbRequest)
@@ -306,9 +306,9 @@ public final class Generation {
 
 		long startTime = System.currentTimeMillis();
 
-		WorkloadReader wReaderW = WorkloadReader.create(nbDataNodes,loadMode.WRITE);
+		WorkloadReader wReaderW = WorkloadReader.create(nbDataNodes, loadMode.WRITE);
 		WorkloadReader wReaderR = WorkloadReader.create(nbDataNodes, loadMode.READ);
-		
+
 		List<List<Object>> validRequest = TxtUtils.mergeWorkloadsData(wReaderW, wReaderR);
 
 		// reducing the requestSet if necessary
@@ -344,7 +344,6 @@ public final class Generation {
 
 		// Clock parameters
 		final double cpuFreq = cpuFrequency[0][0] * 1E6; // Hz
-
 
 		// Adding requests to device
 		Device.Builder device = Device.newBuilder();

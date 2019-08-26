@@ -98,7 +98,7 @@ public class ESSim extends RecapSim {
 		 * UtilizationModel for RAM
 		 */
 		// UtilizationModel uRamES = new UtilizationModelDynamic(Unit.PERCENTAGE, 50);
-		UtilizationModel uRamES = new UtilizationModelDynamic(Unit.ABSOLUTE, ram_cloudlet);
+		UtilizationModelDynamic uRamES = new UtilizationModelDynamic(Unit.ABSOLUTE, ram_cloudlet);
 
 		/*
 		 * UtilizationModel for CPU

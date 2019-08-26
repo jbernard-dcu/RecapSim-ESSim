@@ -43,7 +43,7 @@ public class MonitoringReader {
 		List<List<Object>> columns = new ArrayList<List<Object>>();
 
 		try {
-			File file = new File(getFilePath(type,vm));
+			File file = new File(getFilePath(type, vm));
 			FileReader fileReader = new FileReader(file);
 			BufferedReader bufferedReader = new BufferedReader(fileReader);
 
@@ -120,18 +120,17 @@ public class MonitoringReader {
 		fileName += "-node-134.60.64." + vmId + ".txt";
 		return System.getProperty("user.dir") + File.separator + path + File.separator + fileName;
 	}
-	
+
 	/**
 	 * Filters the values out of bound of the workload associated with this load
 	 * mode. To separate the two modes, this method must be called
+	 * TODO fix bug of dates when launching with 3 nodes workload
 	 */
 	public MonitoringReader filter(loadMode mode) {
 
 		List<List<Object>> validRequest = WorkloadReader.create(nbNodes, mode).getData();
 		long startTime = (Long) validRequest.get(0).get(0);
 		long endTime = (Long) validRequest.get(0).get(validRequest.get(0).size() - 1);
-
-		TxtUtils.print("datasize:" + data.get(0).size(), 1000);
 
 		// clean all values out of specified bounds
 		int time = 0;
@@ -146,8 +145,6 @@ public class MonitoringReader {
 			}
 		}
 
-		TxtUtils.print("datasize:" + data.get(0).size(), 1000);
-
 		return this;
 	}
 
@@ -159,12 +156,7 @@ public class MonitoringReader {
 	 * @return
 	 */
 	public double[] getParamsDist(double precision) {
-
-		// TODO check typeData to avoid having less than two modes
-
 		List<Double> dataset = (List<Double>) (List<?>) data.get(2);
-
-		TxtUtils.print(data.toString(), 1000);
 
 		// Calculating specified freqDist
 		TreeMap<Double, Integer> freqDist = getFrequencyDist(dataset, precision);
@@ -212,7 +204,7 @@ public class MonitoringReader {
 			res.put(key, res.get(key) + 1);
 		}
 
-		printHistogram(res, 0);
+		// printHistogram(res, 0);
 
 		return res;
 	}
@@ -223,12 +215,7 @@ public class MonitoringReader {
 			for (int i = 0; i < res.get(key).intValue(); i++) {
 				s += "o";
 			}
-			System.out.println(Math.round(key * 1000.) / 1000. + " " + s);
-			try {
-				Thread.sleep(waitingTimeMillis);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
+			TxtUtils.print(Math.round(key * 1000.) / 1000. + " " + s, waitingTimeMillis);
 		}
 	}
 

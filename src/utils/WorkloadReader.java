@@ -35,10 +35,10 @@ public class WorkloadReader {
 			path += "22_40/data/";
 			break;
 		default:
-			throw new IllegalArgumentException("nbNodes cas only be 3 or 9 for file reading methods");
+			throw new IllegalArgumentException("nbNodes cas only be 3 or 9");
 		}
 
-		// Checking that writeOrRead is equal to "W" or "R"
+		// Checking that mode is equal to "W" or "R"
 		String fileName = "";
 		switch (mode) {
 		case WRITE:
@@ -48,15 +48,14 @@ public class WorkloadReader {
 			fileName = "transaction.txt";
 			break;
 		default:
-			throw new IllegalArgumentException("writeOrRead can only be 'W' or 'R' for file reading methods");
+			throw new IllegalArgumentException("loadMode can only be WRITE or READ");
 		}
 
 		String line = null;
 
-		List<List<Object>> validRequest = new ArrayList<List<Object>>();
-
+		List<List<Object>> validRequest = new ArrayList<>();
 		for (int field = 0; field < 3; field++) {
-			validRequest.add(new ArrayList<Object>());
+			validRequest.add(new ArrayList<>());
 		}
 
 		try {
