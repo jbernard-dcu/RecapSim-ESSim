@@ -1,11 +1,11 @@
-package Classes;
+package synthetic;
 
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 
-import Main.Launcher;
 import eu.recap.sim.models.WorkloadModel.Request;
+import main.Launcher;
 
 public class Document {
 

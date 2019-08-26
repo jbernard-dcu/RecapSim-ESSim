@@ -1,14 +1,16 @@
-package Classes;
+package txtutils;
 
 import java.util.List;
 import java.util.TreeMap;
 
 import org.apache.commons.math3.util.Pair;
 
-import Main.Launcher;
 import eu.recap.sim.models.WorkloadModel.Device;
 import eu.recap.sim.models.WorkloadModel.Request;
 import eu.recap.sim.models.WorkloadModel.Workload;
+import main.Launcher;
+import synthetic.Document;
+import synthetic.Shard;
 
 public class Print {
 	

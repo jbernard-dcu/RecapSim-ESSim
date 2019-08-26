@@ -1,4 +1,4 @@
-package Classes;
+package synthetic;
 
 import java.util.ArrayList;
 import java.util.Collection;

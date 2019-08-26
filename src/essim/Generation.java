@@ -1,4 +1,4 @@
-package Classes;
+package essim;
 
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
@@ -11,11 +11,8 @@ import org.apache.commons.math3.distribution.EnumeratedDistribution;
 import org.apache.commons.math3.distribution.ExponentialDistribution;
 import org.apache.commons.math3.util.Pair;
 
-import Classes.Parameters.path;
-import Classes.Parameters.typeParam;
-import Classes.TxtUtils.loadMode;
-import Classes.TxtUtils.typeData;
-import Main.Launcher;
+import essim.Parameters.path;
+import essim.Parameters.typeParam;
 import eu.recap.sim.models.ApplicationModel.Application;
 import eu.recap.sim.models.ApplicationModel.ApplicationLandscape;
 import eu.recap.sim.models.ApplicationModel.Deployment;
@@ -34,6 +31,13 @@ import eu.recap.sim.models.LocationModel.Location;
 import eu.recap.sim.models.WorkloadModel.Device;
 import eu.recap.sim.models.WorkloadModel.Request;
 import eu.recap.sim.models.WorkloadModel.Workload;
+import main.Launcher;
+import synthetic.Document;
+import synthetic.Shard;
+import txtutils.TxtUtils;
+import txtutils.WorkloadReader;
+import txtutils.TxtUtils.loadMode;
+import txtutils.TxtUtils.typeData;
 
 /**
  * This class holds useful methods to generate the objects necessary for the

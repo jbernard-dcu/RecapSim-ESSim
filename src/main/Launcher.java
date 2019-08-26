@@ -1,4 +1,4 @@
-package Main;
+package main;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -10,15 +10,14 @@ import org.apache.commons.math3.distribution.ExponentialDistribution;
 import org.apache.commons.math3.distribution.ZipfDistribution;
 import org.apache.commons.math3.util.Pair;
 
-import Classes.Document;
-import Classes.ESSim;
-import Classes.Generation;
-import Classes.Shard;
-
+import essim.ESSim;
+import essim.Generation;
 import eu.recap.sim.models.ApplicationModel.ApplicationLandscape;
 import eu.recap.sim.models.ExperimentModel.Experiment;
 import eu.recap.sim.models.InfrastructureModel.Infrastructure;
 import eu.recap.sim.models.WorkloadModel.*;
+import synthetic.Document;
+import synthetic.Shard;
 
 public class Launcher {
 

@@ -1,4 +1,4 @@
-package Classes;
+package essim;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -13,8 +13,6 @@ import org.cloudbus.cloudsim.utilizationmodels.UtilizationModel.Unit;
 import org.cloudbus.cloudsim.vms.Vm;
 import org.cloudsimplus.listeners.CloudletVmEventInfo;
 
-import Classes.TxtUtils.loadMode;
-import Classes.TxtUtils.typeData;
 import eu.recap.sim.RecapSim;
 import eu.recap.sim.cloudsim.cloudlet.IRecapCloudlet;
 import eu.recap.sim.cloudsim.cloudlet.RecapCloudlet;
@@ -26,6 +24,10 @@ import eu.recap.sim.helpers.RecapCloudletsTableBuilder;
 import eu.recap.sim.models.ApplicationModel.Application.Component.Api;
 import eu.recap.sim.models.InfrastructureModel.Link;
 import eu.recap.sim.models.WorkloadModel.Request;
+import txtutils.MonitoringReader;
+import txtutils.TxtUtils;
+import txtutils.TxtUtils.loadMode;
+import txtutils.TxtUtils.typeData;
 
 public class ESSim extends RecapSim {
 
@@ -59,8 +61,8 @@ public class ESSim extends RecapSim {
 		// showBwUtilizationForAllVms(finishTime,veList);
 
 		// print VM resource consumption as a Table
-		showTableCpuUtilizationForAllVms(finishTime, veList);
-		// showTableRamUtilizationForAllVms(finishTime, veList);
+		// showTableCpuUtilizationForAllVms(finishTime, veList);
+		 showTableRamUtilizationForAllVms(finishTime, veList);
 
 		// output JSON File
 		outputTableAsJSON(finishedCloudlets, rim, ram, rwm, config);
