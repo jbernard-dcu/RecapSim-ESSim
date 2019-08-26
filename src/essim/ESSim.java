@@ -13,6 +13,7 @@ import org.cloudbus.cloudsim.utilizationmodels.UtilizationModel.Unit;
 import org.cloudbus.cloudsim.vms.Vm;
 import org.cloudsimplus.listeners.CloudletVmEventInfo;
 
+import distribution.NetworkIO;
 import eu.recap.sim.RecapSim;
 import eu.recap.sim.cloudsim.cloudlet.IRecapCloudlet;
 import eu.recap.sim.cloudsim.cloudlet.RecapCloudlet;
@@ -36,6 +37,9 @@ public class ESSim extends RecapSim {
 
 	// Repartition between the dataNodes for CPU values
 	double[] repartNodes = Generation.repartNodes;
+
+	// Proba distributions for filesizes
+	NetworkIO distIO = NetworkIO.create(nbDataNodes);
 
 	//////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////// OVERRIDES
@@ -62,7 +66,7 @@ public class ESSim extends RecapSim {
 
 		// print VM resource consumption as a Table
 		// showTableCpuUtilizationForAllVms(finishTime, veList);
-		 showTableRamUtilizationForAllVms(finishTime, veList);
+		showTableRamUtilizationForAllVms(finishTime, veList);
 
 		// output JSON File
 		outputTableAsJSON(finishedCloudlets, rim, ram, rwm, config);
@@ -122,19 +126,10 @@ public class ESSim extends RecapSim {
 					um -> 0.01 * (normalParams[0] + (new Random().nextGaussian()) * normalParams[1]));
 
 			/*
-			 * Statistical models for filesizes
+			 * Random models for filesizes
 			 */
-
-			MonitoringReader mReaderNetworkReceived = MonitoringReader
-					.create(nbDataNodes, vmId, typeData.NetworkReceived).filter(mode);
-			MonitoringReader mReaderNetworkSent = MonitoringReader.create(nbDataNodes, vmId, typeData.NetworkSent)
-					.filter(mode);
-
-			double[] paramsReceived = mReaderNetworkReceived.getParamsDist(0.25);
-			double[] paramsSent = mReaderNetworkSent.getParamsDist(0.25);
-
-			inputFileSize = (long) (paramsReceived[0] + (new Random().nextGaussian() * paramsReceived[1]));
-			outputFileSize = (long) (paramsSent[0] + (new Random().nextGaussian() * paramsSent[1]));
+			inputFileSize = (long) distIO.sampleReceivedMB(componentId, mode);
+			outputFileSize = (long) distIO.sampleSentMB(componentId, mode);
 
 		}
 
@@ -353,11 +348,13 @@ public class ESSim extends RecapSim {
 						// Updated MIPS DataNodes here
 						double mi = repartNodes[positionNexApi] * request.getMipsDataNodes();
 
-						IRecapCloudlet newRecapCloudlet = createCloudlet(targetVe, (int) mi,
-								nextApi.getDataToTransfer(), nextApi.getDataToTransfer(), nextApi.getIops(), delay,
-								finishedRecapCloudlet.getApplicationId(), currentApi.getNextComponentId(positionNexApi),
-								nextApi.getApiId(), nextApi.getRam(), finishedRecapCloudlet.getRequestId(),
-								finishedRecapCloudlet.getOriginDeviceId());
+						long inputFileSize = nextApi.getDataToTransfer();
+						long outputFileSize = nextApi.getDataToTransfer();
+
+						IRecapCloudlet newRecapCloudlet = createCloudlet(targetVe, (int) mi, inputFileSize,
+								outputFileSize, nextApi.getIops(), delay, finishedRecapCloudlet.getApplicationId(),
+								currentApi.getNextComponentId(positionNexApi), nextApi.getApiId(), nextApi.getRam(),
+								finishedRecapCloudlet.getRequestId(), finishedRecapCloudlet.getOriginDeviceId());
 						newRecapCloudlet.setBwUpdateTime(simulation.clock());
 
 						// 2a. calculate delay based on the connection
