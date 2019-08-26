@@ -6,10 +6,10 @@ import java.util.Map;
 import org.apache.commons.math3.distribution.NormalDistribution;
 import org.apache.commons.math3.util.Pair;
 
-import txtutils.MonitoringReader;
-import txtutils.TxtUtils;
-import txtutils.TxtUtils.loadMode;
-import txtutils.TxtUtils.typeData;
+import utils.MonitoringReader;
+import utils.TxtUtils;
+import utils.TxtUtils.loadMode;
+import utils.TxtUtils.typeData;
 
 public class NetworkIO {
 

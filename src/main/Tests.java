@@ -8,7 +8,7 @@ import essim.Generation;
 import eu.recap.sim.models.ApplicationModel.ApplicationLandscape;
 import eu.recap.sim.models.InfrastructureModel.Infrastructure;
 import eu.recap.sim.models.WorkloadModel.Workload;
-import txtutils.Print;
+import utils.Print;
 
 import java.io.FileNotFoundException;
 import java.util.ArrayList;

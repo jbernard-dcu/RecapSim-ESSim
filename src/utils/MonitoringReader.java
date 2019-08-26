@@ -1,4 +1,4 @@
-package txtutils;
+package utils;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -9,8 +9,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.TreeMap;
 
-import txtutils.TxtUtils.loadMode;
-import txtutils.TxtUtils.typeData;
+import utils.TxtUtils.loadMode;
+import utils.TxtUtils.typeData;
 
 @SuppressWarnings("unchecked")
 public class MonitoringReader {

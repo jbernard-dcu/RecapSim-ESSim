@@ -25,10 +25,10 @@ import eu.recap.sim.helpers.RecapCloudletsTableBuilder;
 import eu.recap.sim.models.ApplicationModel.Application.Component.Api;
 import eu.recap.sim.models.InfrastructureModel.Link;
 import eu.recap.sim.models.WorkloadModel.Request;
-import txtutils.MonitoringReader;
-import txtutils.TxtUtils;
-import txtutils.TxtUtils.loadMode;
-import txtutils.TxtUtils.typeData;
+import utils.MonitoringReader;
+import utils.TxtUtils;
+import utils.TxtUtils.loadMode;
+import utils.TxtUtils.typeData;
 
 public class ESSim extends RecapSim {
 

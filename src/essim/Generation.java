@@ -34,10 +34,10 @@ import eu.recap.sim.models.WorkloadModel.Workload;
 import main.Launcher;
 import synthetic.Document;
 import synthetic.Shard;
-import txtutils.TxtUtils;
-import txtutils.WorkloadReader;
-import txtutils.TxtUtils.loadMode;
-import txtutils.TxtUtils.typeData;
+import utils.TxtUtils;
+import utils.WorkloadReader;
+import utils.TxtUtils.loadMode;
+import utils.TxtUtils.typeData;
 
 /**
  * This class holds useful methods to generate the objects necessary for the

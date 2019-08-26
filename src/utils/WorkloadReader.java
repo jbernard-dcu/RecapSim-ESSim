@@ -1,4 +1,4 @@
-package txtutils;
+package utils;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -12,7 +12,7 @@ import java.util.Map;
 import org.apache.commons.math3.distribution.LogNormalDistribution;
 
 import distribution.LogNormalFunc;
-import txtutils.TxtUtils.loadMode;
+import utils.TxtUtils.loadMode;
 
 public class WorkloadReader {
 
