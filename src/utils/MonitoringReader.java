@@ -18,6 +18,15 @@ public class MonitoringReader {
 	private int nbNodes;
 	private List<List<Object>> data;
 
+	public static void main(String[] args) {
+		MonitoringReader mReader = MonitoringReader.create(9, 121, typeData.MemoryUsage).filter(loadMode.WRITE);
+		
+		List<Double> dataset = (List<Double>)(List<?>)mReader.getData().get(2);
+		
+		double precision = 1E-3;
+		mReader.getFrequencyDist(dataset, precision);
+	}
+
 	/**
 	 * Constructor to build the data from specified arguments
 	 * 
@@ -142,11 +151,7 @@ public class MonitoringReader {
 	 * returns the fitDistribution for the given parameters and the specified
 	 * loadMode
 	 * 
-	 * @param nbDNs
-	 * @param compId
-	 * @param type
 	 * @param precision
-	 * @param load
 	 * @return
 	 */
 	public double[] getParamsDist(double precision) {
@@ -181,12 +186,10 @@ public class MonitoringReader {
 
 	/**
 	 * Returns the distribution by classes of the specified data, the precision must
-	 * be
-	 * set
+	 * be set
 	 * 
-	 * @param nbNodes
-	 * @param type
-	 * @param vm
+	 * @param dataset
+	 * @param precision
 	 */
 	private TreeMap<Double, Integer> getFrequencyDist(List<Double> dataset, double precision) {
 
@@ -213,7 +216,7 @@ public class MonitoringReader {
 			for (int i = 0; i < res.get(key).intValue(); i++) {
 				s += "o";
 			}
-			System.out.println(key + " " + s);
+			System.out.println(Math.round(key*1000.)/1000. + " " + s);
 			try {
 				Thread.sleep(waitingTimeMillis);
 			} catch (InterruptedException e) {

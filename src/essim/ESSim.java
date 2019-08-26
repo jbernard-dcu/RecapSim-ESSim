@@ -44,7 +44,7 @@ public class ESSim extends RecapSim {
 	NetworkIO distIO = NetworkIO.create(nbDataNodes);
 
 	// List of apis incoming datanodes
-	List<String> dnApis = Stream.iterate(3, n -> n + 1).limit(2 + nbDataNodes).map(s -> s + "_1")
+	List<String> dnApis = Stream.iterate(3, n -> n + 1).limit(nbDataNodes).map(s -> s + "_1")
 			.collect(Collectors.toList());
 
 	//////////////////////////////////////////////////////////////////////////////////////////
@@ -60,7 +60,7 @@ public class ESSim extends RecapSim {
 		 */
 
 		List<RecapCloudlet> finishedCloudlets = broker0.getCloudletFinishedList();
-		new RecapCloudletsTableBuilder(finishedCloudlets, rim, ram, rwm, config).build();
+		// new RecapCloudletsTableBuilder(finishedCloudlets, rim, ram, rwm, config).build();
 
 		// print Host CPU UTIL
 		// showCpuUtilizationForAllHosts();
@@ -135,7 +135,7 @@ public class ESSim extends RecapSim {
 			 */
 			if (apiId.contentEquals("2_2"))
 				inputFileSize = (long) distIO.sumSampleSent(mode);
-			
+
 			if (dnApis.contains(apiId))
 				inputFileSize = (long) distIO.sampleReceivedMB(componentId, mode);
 

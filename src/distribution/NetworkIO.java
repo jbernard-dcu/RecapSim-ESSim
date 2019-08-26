@@ -7,7 +7,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.apache.commons.math3.distribution.NormalDistribution;
-import org.apache.commons.math3.util.Pair;
 
 import utils.MonitoringReader;
 import utils.TxtUtils;
@@ -17,7 +16,7 @@ import utils.TxtUtils.typeData;
 /***
  * The class that holds the NetworkIO distribution extracted from monitoring
  * files. The distributions are stored in Maps, associating each
- * NormalDistribution with a Pair<String,loadMode>
+ * NormalDistribution with a String containing componentId+loadMode
  * 
  * @author Joseph
  *
@@ -26,25 +25,25 @@ public class NetworkIO {
 
 	private int nbNodes;
 	private int[] vmIds;
-	private Map<Pair<String, loadMode>, NormalDistribution> distReceived;
-	private Map<Pair<String, loadMode>, NormalDistribution> distSent;
+	private Map<String, NormalDistribution> distReceived;
+	private Map<String, NormalDistribution> distSent;
 
 	private NetworkIO(int nbNodes) {
 		this.nbNodes = nbNodes;
 		this.vmIds = TxtUtils.getMonitoringVmsList(nbNodes);
-		this.distReceived = new HashMap<Pair<String, loadMode>, NormalDistribution>();
-		this.distSent = new HashMap<Pair<String, loadMode>, NormalDistribution>();
+		this.distReceived = new HashMap<String, NormalDistribution>();
+		this.distSent = new HashMap<String, NormalDistribution>();
 	}
 
 	public static NetworkIO create(int nbNodes) {
 		return new NetworkIO(nbNodes);
 	}
 
-	private void setDistReceived(Map<Pair<String, loadMode>, NormalDistribution> newDist) {
-		this.distReceived = newDist;
+	private void setDistReceived(Map<String, NormalDistribution> map) {
+		this.distReceived = map;
 	}
 
-	private void setDistSent(Map<Pair<String, loadMode>, NormalDistribution> newDist) {
+	private void setDistSent(Map<String, NormalDistribution> newDist) {
 		this.distSent = newDist;
 	}
 
@@ -56,10 +55,9 @@ public class NetworkIO {
 		return sampleIOMB(componentId, mode, distSent, typeData.NetworkSent);
 	}
 
-	private double sampleIOMB(String componentId, loadMode mode, Map<Pair<String, loadMode>, NormalDistribution> map,
-			typeData type) {
+	private double sampleIOMB(String componentId, loadMode mode, Map<String, NormalDistribution> map, typeData type) {
 
-		Pair<String, loadMode> key = new Pair<String, loadMode>(componentId, mode);
+		String key = componentId + mode;
 
 		if (!map.containsKey(key)) {
 			int compId = Integer.valueOf(componentId) - 3;
@@ -88,7 +86,7 @@ public class NetworkIO {
 	public double sumSampleSent(loadMode mode) {
 		double sum = 0;
 
-		List<String> compIds = Stream.iterate(3, n -> n + 1).limit(2 + nbNodes).map(s -> "" + s)
+		List<String> compIds = Stream.iterate(3, n -> n + 1).limit(nbNodes).map(s -> "" + s)
 				.collect(Collectors.toList());
 
 		for (String compId : compIds) {
