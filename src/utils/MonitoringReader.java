@@ -189,7 +189,7 @@ public class MonitoringReader {
 	 * @param dataset
 	 * @param precision
 	 */
-	private TreeMap<Double, Integer> getFrequencyDist(List<Double> dataset, double precision) {
+	public static TreeMap<Double, Integer> getFrequencyDist(List<Double> dataset, double precision) {
 
 		TreeMap<Double, Integer> res = new TreeMap<Double, Integer>();
 
@@ -204,12 +204,12 @@ public class MonitoringReader {
 			res.put(key, res.get(key) + 1);
 		}
 
-		// printHistogram(res, 0);
+		printHistogram(res, 10);
 
 		return res;
 	}
 
-	private void printHistogram(TreeMap<Double, Integer> res, long waitingTimeMillis) {
+	private static void printHistogram(TreeMap<Double, Integer> res, long waitingTimeMillis) {
 		for (double key : res.keySet()) {
 			String s = "";
 			for (int i = 0; i < res.get(key).intValue(); i++) {

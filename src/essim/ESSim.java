@@ -13,7 +13,7 @@ import org.cloudbus.cloudsim.utilizationmodels.UtilizationModel.Unit;
 import org.cloudbus.cloudsim.vms.Vm;
 import org.cloudsimplus.listeners.CloudletVmEventInfo;
 
-import distribution.DistUsage;
+import distribution.Usage;
 import eu.recap.sim.RecapSim;
 import eu.recap.sim.cloudsim.cloudlet.IRecapCloudlet;
 import eu.recap.sim.cloudsim.cloudlet.RecapCloudlet;
@@ -38,10 +38,10 @@ public class ESSim extends RecapSim {
 	double[] repartNodes = Generation.repartNodes;
 
 	// Proba distributions for filesizes
-	DistUsage distReceived = DistUsage.create(nbDataNodes, typeData.NetworkReceived);
+	Usage distReceived = Usage.create(nbDataNodes, typeData.NetworkReceived);
 
 	// Proba distributions for CPU usage
-	DistUsage distCpu = DistUsage.create(nbDataNodes, typeData.CpuLoad);
+	Usage distCpu = Usage.create(nbDataNodes, typeData.CpuLoad);
 
 	// List of apis incoming datanodes
 	List<String> dnApis = Stream.iterate(3, n -> n + 1).limit(nbDataNodes).map(s -> s + "_1")
@@ -116,15 +116,14 @@ public class ESSim extends RecapSim {
 				mode = loadMode.READ;
 
 			// uCpuES = new UtilizationModelDynamic(Unit.PERCENTAGE, normalParams[0]);
+			// Revoir updateFunction, on n'a pas une valeur aléatoire à chaque maj
 			double newCpuUsage = distCpu.sampleUsage(componentId, mode);
 			uCpuES.setUtilizationUpdateFunction(um -> 0.01 * newCpuUsage);
 
-			if (dnApis.contains(apiId)) {
-				inputFileSize = (long) distReceived.sampleUsage(componentId, mode);
+			inputFileSize = (long) distReceived.sampleUsage(componentId, mode);
 
-				// Updating the memoryUsed
-				memoryUsed[indexDn] += inputFileSize;
-			}
+			// Updating the memoryUsed
+			memoryUsed[indexDn] += inputFileSize;
 
 			// DN UtilizationModel for RAM usage
 			uRamES = new UtilizationModelDynamic(Unit.ABSOLUTE, memoryUsed[indexDn]);

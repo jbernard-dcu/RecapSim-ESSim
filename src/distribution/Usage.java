@@ -11,22 +11,22 @@ import org.apache.commons.math3.distribution.RealDistribution;
 import java.util.HashMap;
 import java.util.Map;
 
-public class DistUsage {
+public class Usage {
 
 	private int nbNodes;
 	private int[] vmIds;
 	private Map<String, RealDistribution> dist;
 	private typeData type;
 
-	private DistUsage(int nbNodes, typeData type) {
+	private Usage(int nbNodes, typeData type) {
 		this.nbNodes = nbNodes;
 		this.vmIds = TxtUtils.getMonitoringVmsList(nbNodes);
 		this.dist = new HashMap<String, RealDistribution>();
 		this.type = type;
 	}
 
-	public static DistUsage create(int nbNodes, typeData type) {
-		return new DistUsage(nbNodes, type);
+	public static Usage create(int nbNodes, typeData type) {
+		return new Usage(nbNodes, type);
 	}
 
 	public double sampleUsage(String componentId, loadMode mode) {
