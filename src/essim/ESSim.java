@@ -3,11 +3,9 @@ package essim;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Random;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.apache.commons.math3.distribution.NormalDistribution;
 import org.cloudbus.cloudsim.utilizationmodels.UtilizationModel;
 import org.cloudbus.cloudsim.utilizationmodels.UtilizationModelDynamic;
 import org.cloudbus.cloudsim.utilizationmodels.UtilizationModelFull;
@@ -15,7 +13,7 @@ import org.cloudbus.cloudsim.utilizationmodels.UtilizationModel.Unit;
 import org.cloudbus.cloudsim.vms.Vm;
 import org.cloudsimplus.listeners.CloudletVmEventInfo;
 
-import distribution.NetworkIO;
+import distribution.DistUsage;
 import eu.recap.sim.RecapSim;
 import eu.recap.sim.cloudsim.cloudlet.IRecapCloudlet;
 import eu.recap.sim.cloudsim.cloudlet.RecapCloudlet;
@@ -27,7 +25,6 @@ import eu.recap.sim.helpers.RecapCloudletsTableBuilder;
 import eu.recap.sim.models.ApplicationModel.Application.Component.Api;
 import eu.recap.sim.models.InfrastructureModel.Link;
 import eu.recap.sim.models.WorkloadModel.Request;
-import utils.MonitoringReader;
 import utils.TxtUtils;
 import utils.TxtUtils.loadMode;
 import utils.TxtUtils.typeData;
@@ -41,11 +38,17 @@ public class ESSim extends RecapSim {
 	double[] repartNodes = Generation.repartNodes;
 
 	// Proba distributions for filesizes
-	NetworkIO distIO = NetworkIO.create(nbDataNodes);
+	DistUsage distReceived = DistUsage.create(nbDataNodes, typeData.NetworkReceived);
+
+	// Proba distributions for CPU usage
+	DistUsage distCpu = DistUsage.create(nbDataNodes, typeData.CpuLoad);
 
 	// List of apis incoming datanodes
 	List<String> dnApis = Stream.iterate(3, n -> n + 1).limit(nbDataNodes).map(s -> s + "_1")
 			.collect(Collectors.toList());
+
+	// Array to store the value of the memory used on each node
+	double[] memoryUsed = new double[nbDataNodes];
 
 	//////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////// OVERRIDES
@@ -86,31 +89,25 @@ public class ESSim extends RecapSim {
 			double submissionDelay, String applicationId, String componentId, String apiId, double ram_cloudlet,
 			int requestId, String originDeviceId) {
 
-		// final long length = 10000; // in Million Instructions (MI)
-		// mi = length;
-
-		// cloudlet will use all the VM's CPU cores
+		// Number of CPU cores available for cloudlet
 		int numberOfCpuCores = (int) vm.getNumberOfPes();
-
 		numberOfCpuCores = 1;
 
-		/*
-		 * UtilizationModel for RAM
-		 */
-		// UtilizationModel uRamES = new UtilizationModelDynamic(Unit.PERCENTAGE, 50);
+		// Default UtilizationModel for BW
+		UtilizationModel uBwES = new UtilizationModelFull();
+
+		// Default UtilizationModel for RAM
 		UtilizationModelDynamic uRamES = new UtilizationModelDynamic(Unit.ABSOLUTE, ram_cloudlet);
 
-		/*
-		 * UtilizationModel for CPU
-		 */
-		// Setting maximum
-		double value = 1. / 10;// mi
+		// Default UtilizationModel for CPU
+		double value = 1. / 10;
 		UtilizationModelDynamic uCpuES = new UtilizationModelDynamic(Unit.PERCENTAGE, value, value);
 
-		// check if we're executing on one of the dataNodes
-		// Multiply by 3000 to get values in MI
-		if (Integer.valueOf(componentId) >= 3) {
+		// Check if we're executing on one of the DNs
+		int indexDn = Integer.valueOf(componentId) - 3;
+		if (indexDn >= 0) {
 
+			// Getting the type of request
 			String type = ModelHelpers.getRequestTask(rwm.getDevicesList(), originDeviceId, requestId).getType();
 			loadMode mode = null;
 			if (type.contentEquals("INSERT") || type.equals("UPDATE"))
@@ -118,34 +115,22 @@ public class ESSim extends RecapSim {
 			if (type.contentEquals("READ"))
 				mode = loadMode.READ;
 
-			int vmId = TxtUtils.getMonitoringVmsList(nbDataNodes)[Integer.valueOf(componentId) - 3];
+			// uCpuES = new UtilizationModelDynamic(Unit.PERCENTAGE, normalParams[0]);
+			double newCpuUsage = distCpu.sampleUsage(componentId, mode);
+			uCpuES.setUtilizationUpdateFunction(um -> 0.01 * newCpuUsage);
 
-			/*
-			 * UtilizationModel for CPU utilization
-			 */
-			MonitoringReader mReaderCpu = MonitoringReader.create(nbDataNodes, vmId, typeData.CpuLoad).filter(mode);
-			double precision = Math.log(mReaderCpu.getNbPoints()) / 2 * Math.log(2);
-			double[] normalParams = mReaderCpu.getParamsDist(precision);
+			if (dnApis.contains(apiId)) {
+				inputFileSize = (long) distReceived.sampleUsage(componentId, mode);
 
-			uCpuES = new UtilizationModelDynamic(Unit.PERCENTAGE, normalParams[0]);
-			uCpuES.setUtilizationUpdateFunction(
-					um -> 0.01 * (normalParams[0] + (new Random().nextGaussian()) * normalParams[1]));
+				// Updating the memoryUsed
+				memoryUsed[indexDn] += inputFileSize;
+			}
 
-			/*
-			 * Random values for inputFileSize
-			 */
-			if (apiId.contentEquals("2_2"))
-				inputFileSize = (long) distIO.sumSampleSent(mode);
-
-			if (dnApis.contains(apiId))
-				inputFileSize = (long) distIO.sampleReceivedMB(componentId, mode);
+			// DN UtilizationModel for RAM usage
+			uRamES = new UtilizationModelDynamic(Unit.ABSOLUTE, memoryUsed[indexDn]);
+			uRamES.setUtilizationUpdateFunction(um -> memoryUsed[indexDn]);
 
 		}
-
-		/*
-		 * UtilizationModel for BW
-		 */
-		UtilizationModel uBwES = new UtilizationModelFull();
 
 		/*
 		 * Creating new cloudlet

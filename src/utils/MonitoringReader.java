@@ -149,8 +149,8 @@ public class MonitoringReader {
 	}
 
 	/**
-	 * returns the fitDistribution for the given parameters and the specified
-	 * loadMode
+	 * Returns the estimateGaussianDist based on the frequency distribution
+	 * calculated at the specified precision
 	 * 
 	 * @param precision
 	 * @return
