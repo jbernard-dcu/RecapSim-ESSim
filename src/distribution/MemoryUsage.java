@@ -14,47 +14,66 @@ public class MemoryUsage {
 	private int vm;
 	private typeData type;
 
-	private MemoryUsage(int nbNodes, String componentId, typeData type) {
+	private List<Double> time;
+	private List<Double> cInput;
+
+	public static void main(String[] args) {
+		int nbNodes = 9;
+		int vm = 1;
+
+		int[] vmIds = TxtUtils.getMonitoringVmsList(9);
+		int vmId = vmIds[vm - 1];
+
+		MemoryUsage mUsage = MemoryUsage.create(nbNodes, vmId);
+
+		for(double i:mUsage.getEmpiricOutput()) {
+			System.out.println(i);
+		}
+	}
+
+	private MemoryUsage(int nbNodes, int vm) {
 		this.nbNodes = nbNodes;
-		this.vm = TxtUtils.getMonitoringVmsList(nbNodes)[Integer.valueOf(componentId) - 3];
-		this.type = type;
-	}
+		this.vm = vm;
 
-	public static MemoryUsage create(int nbNodes, String componentId, typeData type) {
-		return new MemoryUsage(nbNodes, componentId, type);
-	}
-
-	private List<Double> getCumulativeOutput() {
-		List<Double> output = (List<Double>) (List<?>) MonitoringReader.create(nbNodes, vm, type).getData().get(2);
-		for (int i = 1; i < output.size(); i++) {
-			output.set(i, output.get(i - 1) + output.get(i));
+		List<List<Object>> data = MonitoringReader.create(nbNodes, vm, typeData.NetworkReceived).getData();
+		this.time = (List<Double>) (List<?>) data.get(0);
+		this.cInput = (List<Double>) (List<?>) data.get(2);
+		for (int i = 1; i < cInput.size(); i++) {
+			cInput.set(i, cInput.get(i - 1) + cInput.get(i));
 		}
-		return output;
 	}
 
-	private List<Double> getTime() {
-		return (List<Double>) (List<?>) MonitoringReader.create(nbNodes, vm, type).getData().get(0);
+	public static MemoryUsage create(int nbNodes, int vm) {
+		return new MemoryUsage(nbNodes, vm);
 	}
 
-	// eps, w0, wn
-	private double[] getParameters() {
-		List<Double> cumOutput = getCumulativeOutput();
+	// w0
+	private double getParameter() {
 		int i = 1;
-		while (!(cumOutput.get(i - 1) < cumOutput.get(i) && cumOutput.get(i) == cumOutput.get(i + 1)))
+		while (i < cInput.size() - 1) {
+			if (cInput.get(i) > cInput.get(i - 1) && cInput.get(i) > cInput.get(i + 1))
+				break;
 			i++;
-		double tpic = getTime().get(i);
-
-		double eps = 0.7;
-		double w0 = Math.PI / tpic;
-		double wN = w0 / Math.sqrt(1 - Math.pow(eps, 2));
-
-		return new double[] { eps, w0, wN };
-	}
-	
-	public List<Double> getEmpiricOutput(){
-		for(double t:getTime()) {
-			
 		}
+
+		return Math.PI / time.get(i); // pi/tpic
+	}
+
+	public List<Double> getEmpiricOutput() {
+		List<Double> empOutput = new ArrayList<>();
+		double eps = 0.7;
+		double eps2 = Math.sqrt(1 - Math.pow(eps, 2));
+		double phi = Math.PI / 2.;
+		double w0 = getParameter();
+		double wN = w0 / eps2;
+
+		for (int i = 0; i < time.size(); i++) {
+			double 
+			empOutput.add(cInput.get(i)
+					* (1 - (Math.exp(-eps * wN * time.get(i) / eps2) / eps2) * Math.sin(w0 * time.get(i) + phi)));
+		}
+
+		return empOutput;
 	}
 
 }
