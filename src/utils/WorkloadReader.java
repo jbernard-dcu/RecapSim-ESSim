@@ -121,6 +121,11 @@ public class WorkloadReader {
 					previousDate = addDate;
 
 				}
+
+				// Getting the output statistics and the GC information
+				if (line.startsWith("[") && !line.startsWith("[2")) {
+					
+				}
 			}
 
 			bufferedReader.close();
@@ -136,7 +141,7 @@ public class WorkloadReader {
 	public static WorkloadReader create(int nbNodes, loadMode mode) {
 		return new WorkloadReader(nbNodes, mode);
 	}
-	
+
 	public List<List<Object>> getData() {
 		return this.data;
 	}

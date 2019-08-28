@@ -2,6 +2,7 @@ package distribution;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 import utils.MonitoringReader;
 import utils.TxtUtils;
@@ -26,8 +27,9 @@ public class MemoryUsage {
 
 		MemoryUsage mUsage = MemoryUsage.create(nbNodes, vmId);
 
-		for(double i:mUsage.getEmpiricOutput()) {
-			System.out.println(i);
+		int j = 0;
+		for (double i : mUsage.getEmpiricalOutput()) {
+			System.out.println(j++ + " " + i);
 		}
 	}
 
@@ -58,22 +60,36 @@ public class MemoryUsage {
 
 		return Math.PI / time.get(i); // pi/tpic
 	}
-
+	/*
 	public List<Double> getEmpiricOutput() {
 		List<Double> empOutput = new ArrayList<>();
 		double eps = 0.7;
 		double eps2 = Math.sqrt(1 - Math.pow(eps, 2));
-		double phi = Math.PI / 2.;
+		double phi = 0.7;
 		double w0 = getParameter();
 		double wN = w0 / eps2;
 
-		for (int i = 0; i < time.size(); i++) {
-			double 
-			empOutput.add(cInput.get(i)
-					* (1 - (Math.exp(-eps * wN * time.get(i) / eps2) / eps2) * Math.sin(w0 * time.get(i) + phi)));
+		empOutput.add(0.);
+		for (int i = 1; i < time.size(); i++) {
+			double addValue = 0.001 * cInput.get(i)
+					* (1 - (Math.exp(-eps * wN * time.get(i)) / eps2) * Math.sin(w0 * time.get(i) + phi));
+			double garbageCollected = garbageCollected(empOutput.get(i - 1));
+			
+			TxtUtils.print("gc:"+garbageCollected, 10);
+
+			empOutput.add(addValue - garbageCollected);
 		}
 
 		return empOutput;
+	}*/
+	
+	public List<Double> getEmpiricalOutput(){
+		return null;
+	}
+
+	// losing static 10% of the previous value each time
+	public double garbageCollected(double value) {
+		return 0.1 * value;
 	}
 
 }

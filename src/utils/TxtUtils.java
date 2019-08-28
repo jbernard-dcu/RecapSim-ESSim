@@ -113,7 +113,7 @@ public class TxtUtils {
 	 * Reads the time in the format specified in monitoring files and returns the
 	 * value as a {@link Date}
 	 */
-	public static Date readTimeMonitoring(String time) {
+	public static long readTimeMonitoring(String time) {
 
 		int start = 0;
 		int year = Integer.valueOf(getWord(time, start, "-"));
@@ -128,7 +128,7 @@ public class TxtUtils {
 		start = 1 + time.indexOf(":", start);
 		int seconds = Integer.valueOf(getWord(time, start, "Z"));
 
-		return new GregorianCalendar(year, month, day, hours, minutes, seconds).getTime();
+		return new GregorianCalendar(year, month, day, hours, minutes, seconds).getTime().getTime();
 	}
 
 	public static long readTimeWorkload(String source) {

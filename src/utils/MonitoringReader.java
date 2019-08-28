@@ -56,7 +56,7 @@ public class MonitoringReader {
 
 			while ((line = bufferedReader.readLine()) != null) {
 				double addRelTime = Double.parseDouble(TxtUtils.getWord(line, 0, ","));
-				Date addAbsTime = TxtUtils.readTimeMonitoring(TxtUtils.getWord(line, line.indexOf(",") + 1, ","));
+				long addAbsTime = TxtUtils.readTimeMonitoring(TxtUtils.getWord(line, line.indexOf(",") + 1, ","));
 				double addValue = Double
 						.parseDouble(TxtUtils.getWord(line, line.indexOf(",", line.indexOf(",") + 1) + 1, ","));
 
@@ -204,12 +204,10 @@ public class MonitoringReader {
 			res.put(key, res.get(key) + 1);
 		}
 
-		printHistogram(res, 10);
-
 		return res;
 	}
 
-	private static void printHistogram(TreeMap<Double, Integer> res, long waitingTimeMillis) {
+	public static void printHistogram(TreeMap<Double, Integer> res, long waitingTimeMillis) {
 		for (double key : res.keySet()) {
 			String s = "";
 			for (int i = 0; i < res.get(key).intValue(); i++) {
