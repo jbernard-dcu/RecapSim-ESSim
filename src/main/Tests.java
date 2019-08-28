@@ -2,13 +2,12 @@ package main;
 
 import java.util.TreeMap;
 
-import Classes.TxtReader;
-import Classes.TxtReader.typeData;
 import essim.Generation;
 import eu.recap.sim.models.ApplicationModel.ApplicationLandscape;
 import eu.recap.sim.models.InfrastructureModel.Infrastructure;
 import eu.recap.sim.models.WorkloadModel.Workload;
 import utils.Print;
+import utils.TxtUtils.typeData;
 
 import java.io.FileNotFoundException;
 import java.util.ArrayList;

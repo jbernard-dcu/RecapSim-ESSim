@@ -5,7 +5,6 @@ import java.io.File;
 import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 import java.util.TreeMap;
 
@@ -135,7 +134,7 @@ public class MonitoringReader {
 		// clean all values out of specified bounds
 		int time = 0;
 		while (time < data.get(1).size()) {
-			long date = ((Date) data.get(1).get(time)).getTime();
+			long date = (long) data.get(1).get(time);
 			if (date <= startTime || date > endTime) {
 				for (int field = 0; field < data.size(); field++) {
 					data.get(field).remove(time);

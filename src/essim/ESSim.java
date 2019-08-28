@@ -9,6 +9,7 @@ import java.util.stream.Stream;
 import org.cloudbus.cloudsim.utilizationmodels.UtilizationModel;
 import org.cloudbus.cloudsim.utilizationmodels.UtilizationModelDynamic;
 import org.cloudbus.cloudsim.utilizationmodels.UtilizationModelFull;
+import org.cloudbus.cloudsim.utilizationmodels.UtilizationModelStochastic;
 import org.cloudbus.cloudsim.utilizationmodels.UtilizationModel.Unit;
 import org.cloudbus.cloudsim.vms.Vm;
 import org.cloudsimplus.listeners.CloudletVmEventInfo;
@@ -93,20 +94,12 @@ public class ESSim extends RecapSim {
 		int numberOfCpuCores = (int) vm.getNumberOfPes();
 		numberOfCpuCores = 1;
 
-		// Default UtilizationModel for BW
-		UtilizationModel uBwES = new UtilizationModelFull();
-
-		// Default UtilizationModel for RAM
-		UtilizationModelDynamic uRamES = new UtilizationModelDynamic(Unit.ABSOLUTE, ram_cloudlet);
-
-		// Default UtilizationModel for CPU
-		double value = 1. / 10;
-		UtilizationModelDynamic uCpuES = new UtilizationModelDynamic(Unit.PERCENTAGE, value, value);
+		UtilizationModel uCpuES;
+		UtilizationModel uRamES;
 
 		// Check if we're executing on one of the DNs
 		int indexDn = Integer.valueOf(componentId) - 3;
 		if (indexDn >= 0) {
-
 			// Getting the type of request
 			String type = ModelHelpers.getRequestTask(rwm.getDevicesList(), originDeviceId, requestId).getType();
 			loadMode mode = null;
@@ -115,21 +108,27 @@ public class ESSim extends RecapSim {
 			if (type.contentEquals("READ"))
 				mode = loadMode.READ;
 
-			// uCpuES = new UtilizationModelDynamic(Unit.PERCENTAGE, normalParams[0]);
-			// Revoir updateFunction, on n'a pas une valeur aléatoire à chaque maj
-			double newCpuUsage = distCpu.sampleUsage(componentId, mode);
-			uCpuES.setUtilizationUpdateFunction(um -> 0.01 * newCpuUsage);
+			// UtilizationModel for CPU
+			uCpuES = new UtilizationModelStochastic(Unit.PERCENTAGE);
+			((UtilizationModelStochastic) uCpuES).setRandomGenerator(distCpu.getDistribution(componentId, mode));
 
 			inputFileSize = (long) distReceived.sampleUsage(componentId, mode);
 
-			// Updating the memoryUsed
-			memoryUsed[indexDn] += inputFileSize;
-
 			// DN UtilizationModel for RAM usage
-			uRamES = new UtilizationModelDynamic(Unit.ABSOLUTE, memoryUsed[indexDn]);
-			uRamES.setUtilizationUpdateFunction(um -> memoryUsed[indexDn]);
+			final double MULT_MEMORY = 1;
+			uRamES = new UtilizationModelDynamic(Unit.ABSOLUTE, MULT_MEMORY * inputFileSize);
 
+		} else {
+			// Default UtilizationModel for CPU
+			double value = 1. / 10;
+			uCpuES = new UtilizationModelDynamic(Unit.PERCENTAGE, value, value);
+
+			// Default UtilizationModel for RAM
+			uRamES = new UtilizationModelDynamic(Unit.ABSOLUTE, ram_cloudlet);
 		}
+
+		// Default UtilizationModel for BW
+		UtilizationModel uBwES = new UtilizationModelFull();
 
 		/*
 		 * Creating new cloudlet
