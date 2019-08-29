@@ -40,17 +40,23 @@ public class ESSim extends RecapSim {
 	double[] repartNodes = Generation.repartNodes;
 
 	// Proba distributions for filesizes
-	Usage distReceived = Usage.create(nbDataNodes, typeData.NetworkReceived);
+	Usage distReceived;
 
 	// Proba distributions for CPU usage
-	Usage distCpu = Usage.create(nbDataNodes, typeData.CpuLoad);
+	Usage distCpu;
 
 	// List of apis incoming datanodes
-	List<String> dnApis = Stream.iterate(3, n -> n + 1).limit(nbDataNodes).map(s -> s + "_1")
-			.collect(Collectors.toList());
+	List<String> dnApis;
 
-	// Array to store the value of the memory used on each node
-	double[] memoryUsed = new double[nbDataNodes];
+	public ESSim() {
+		super();
+
+		distReceived = Usage.create(nbDataNodes, typeData.NetworkReceived).init();
+		distCpu = Usage.create(nbDataNodes, typeData.CpuLoad).init();
+
+		dnApis = Stream.iterate(3, n -> n + 1).limit(nbDataNodes).map(s -> s + "_1").collect(Collectors.toList());
+
+	}
 
 	//////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////// OVERRIDES
@@ -77,7 +83,7 @@ public class ESSim extends RecapSim {
 		// showBwUtilizationForAllVms(finishTime,veList);
 
 		// print VM resource consumption as a Table
-		 showTableCpuUtilizationForAllVms(finishTime, veList);
+		showTableCpuUtilizationForAllVms(finishTime, veList);
 		// showTableRamUtilizationForAllVms(finishTime, veList);
 
 		// output JSON File

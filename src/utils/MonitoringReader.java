@@ -23,7 +23,7 @@ public class MonitoringReader {
 		List<Double> dataset = (List<Double>) (List<?>) mReader.getData().get(2);
 
 		double precision = 1E-3;
-		mReader.getFrequencyDist(dataset, precision);
+		MonitoringReader.getFrequencyDist(dataset, precision);
 	}
 
 	/**

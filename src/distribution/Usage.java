@@ -9,7 +9,10 @@ import org.cloudbus.cloudsim.distributions.ContinuousDistribution;
 import org.cloudbus.cloudsim.distributions.NormalDistr;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class Usage {
 
@@ -31,7 +34,19 @@ public class Usage {
 
 	public double sampleUsage(String componentId, loadMode mode) {
 		return getDistribution(componentId, mode).sample();
+	}
 
+	public Usage init() {
+		List<String> componentIds = Stream.iterate(3, n -> n + 1).limit(nbNodes).map(s -> "" + s)
+				.collect(Collectors.toList());
+		
+		for(String compId:componentIds) {
+			for(loadMode mode:loadMode.values()) {
+				getDistribution(compId,mode);
+			}
+		}
+		
+		return this;
 	}
 
 	public ContinuousDistribution getDistribution(String componentId, loadMode mode) {
