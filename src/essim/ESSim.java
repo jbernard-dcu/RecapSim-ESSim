@@ -94,8 +94,8 @@ public class ESSim extends RecapSim {
 		int numberOfCpuCores = (int) vm.getNumberOfPes();
 		numberOfCpuCores = 1;
 
-		UtilizationModel uCpuES;
-		UtilizationModel uRamES;
+		UtilizationModel uCpu;
+		UtilizationModel uRam;
 
 		// Check if we're executing on one of the DNs
 		int indexDn = Integer.valueOf(componentId) - 3;
@@ -109,33 +109,35 @@ public class ESSim extends RecapSim {
 				mode = loadMode.READ;
 
 			// UtilizationModel for CPU
-			uCpuES = new UtilizationModelStochastic(Unit.PERCENTAGE);
-			((UtilizationModelStochastic) uCpuES).setRandomGenerator(distCpu.getDistribution(componentId, mode));
+			UtilizationModelStochastic uCpuDN = new UtilizationModelStochastic(Unit.PERCENTAGE);
+			uCpuDN.setRandomGenerator(distCpu.getDistribution(componentId, mode));
+			uCpu = uCpuDN;
 
 			inputFileSize = (long) distReceived.sampleUsage(componentId, mode);
 
 			// DN UtilizationModel for RAM usage
 			final double MULT_MEMORY = 1;
-			uRamES = new UtilizationModelDynamic(Unit.ABSOLUTE, MULT_MEMORY * inputFileSize);
+			uRam = new UtilizationModelDynamic(Unit.ABSOLUTE, MULT_MEMORY * inputFileSize);
 
 		} else {
 			// Default UtilizationModel for CPU
 			double value = 1. / 10;
-			uCpuES = new UtilizationModelDynamic(Unit.PERCENTAGE, value, value);
+			UtilizationModelDynamic uCpuES = new UtilizationModelDynamic(Unit.PERCENTAGE, value, value);
+			uCpu = uCpuES;
 
 			// Default UtilizationModel for RAM
-			uRamES = new UtilizationModelDynamic(Unit.ABSOLUTE, ram_cloudlet);
+			uRam = new UtilizationModelDynamic(Unit.ABSOLUTE, ram_cloudlet);
 		}
 
 		// Default UtilizationModel for BW
-		UtilizationModel uBwES = new UtilizationModelFull();
+		UtilizationModel uBw = new UtilizationModelFull();
 
 		/*
 		 * Creating new cloudlet
 		 */
 		IRecapCloudlet recapCloudlet = (IRecapCloudlet) new RecapCloudlet(cloudletList.size(), mi, numberOfCpuCores)
-				.setFileSize(inputFileSize).setOutputSize(outputFileSize).setUtilizationModelCpu(uCpuES)
-				.setUtilizationModelRam(uRamES).setUtilizationModelBw(uBwES).setVm(vm)
+				.setFileSize(inputFileSize).setOutputSize(outputFileSize).setUtilizationModelCpu(uCpu)
+				.setUtilizationModelRam(uRam).setUtilizationModelBw(uBw).setVm(vm)
 				.addOnFinishListener(this::onCloudletFinishListener);
 
 		recapCloudlet.setSubmissionDelay(submissionDelay);

@@ -38,12 +38,14 @@ public class Usage {
 			MonitoringReader mReader = MonitoringReader.create(nbNodes, vmIds[compId], type).filter(mode);
 
 			double precision = Math.log(mReader.getNbPoints()) / 2 * Math.log(2);
+
+			double mult = (type == typeData.CpuLoad) ? 0.01 : 1;
 			switch (type) {
 			case NetworkReceived:
 			case NetworkSent:
 			case CpuLoad:
 				double[] params = mReader.getParamsDist(precision);
-				dist.put(key, new NormalDistr(params[0], params[1]));
+				dist.put(key, new NormalDistr(mult * params[0], mult * params[1]));
 				break;
 			default:
 				break;
