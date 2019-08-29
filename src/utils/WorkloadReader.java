@@ -91,28 +91,31 @@ public class WorkloadReader {
 						double avg = addSpecs.getAvgLatency();
 
 						if (requestTypes.contains(addType)) {
+
+							// Calculating the parameter of the latency distribution
+							LogNormalFunc f = new LogNormalFunc(avg);
+							double param = addSpecs.estimateParameter(f, addSpecs.getPercentile(0.9), 1E-15);
+
+							LogNormalDistribution dist = new LogNormalDistribution(
+									Math.log(avg) - Math.pow(param, 2) / 2., param);
+
 							/*
-							 * // Calculating the parameter of the latency distribution
-							 * LogNormalFunc f = new LogNormalFunc(avg);
-							 * double param = addSpecs.estimateParameter(f, addSpecs.getPercentile(0.9),
-							 * 1E-15);
-							 * 
-							 * LogNormalDistribution dist = new LogNormalDistribution(
-							 * Math.log(avg) - Math.pow(param, 2) / 2., param);
+							 * // reduce the number of requests generation per operation, ie size of dataset
+							 * nbOps /= 1000;
+							 * // Adding requests
+							 * for (int op = 0; op < nbOps; op++) {
+							 * validRequest.get(0).add(addDate + (long) (op * duration / nbOps));
+							 * validRequest.get(1).add(addType);
+							 *
+							 * double addLatency = dist.sample();
+							 * validRequest.get(2).add(addLatency);
+							 * }
 							 */
-							nbOps /= 1;
-							// Adding requests
-							for (int op = 0; op < nbOps; op++) {
-								validRequest.get(0).add(addDate + (long) (op * duration / nbOps));
-								validRequest.get(1).add(addType);
 
-								// double addLatency = dist.sample();
-								validRequest.get(2).add(avg);
-							}
-
-							// validRequest.get(0).add(addDate);
-							// validRequest.get(1).add(addType);
-							// validRequest.get(2).add(avg);
+							// adding only one request per workload line
+							validRequest.get(0).add(addDate);
+							validRequest.get(1).add(addType);
+							validRequest.get(2).add(dist.sample());
 
 						}
 
@@ -124,7 +127,7 @@ public class WorkloadReader {
 
 				// Getting the output statistics and the GC information
 				if (line.startsWith("[") && !line.startsWith("[2")) {
-					
+
 				}
 			}
 

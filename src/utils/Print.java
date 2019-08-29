@@ -8,9 +8,10 @@ import org.apache.commons.math3.util.Pair;
 import eu.recap.sim.models.WorkloadModel.Device;
 import eu.recap.sim.models.WorkloadModel.Request;
 import eu.recap.sim.models.WorkloadModel.Workload;
-import main.Launcher;
+
 import synthetic.Document;
 import synthetic.Shard;
+import synthetic.SynthUtils;
 
 public class Print {
 	
@@ -86,7 +87,7 @@ public class Print {
 			for (Request request : device.getRequestsList()) {
 				System.out.printf(configPrintf, request.getSearchContent().toString(), "|",
 						(request.getTime() - startTime), "|", device.getDeviceId(), "|",
-						Launcher.getWeight(request, termDist) + "\n");
+						SynthUtils.getWeight(request, termDist) + "\n");
 			}
 		}
 
