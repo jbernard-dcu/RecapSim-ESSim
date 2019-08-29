@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.cloudbus.cloudsim.distributions.ContinuousDistribution;
 import org.cloudbus.cloudsim.utilizationmodels.UtilizationModel;
 import org.cloudbus.cloudsim.utilizationmodels.UtilizationModelDynamic;
 import org.cloudbus.cloudsim.utilizationmodels.UtilizationModelFull;
@@ -76,8 +77,8 @@ public class ESSim extends RecapSim {
 		// showBwUtilizationForAllVms(finishTime,veList);
 
 		// print VM resource consumption as a Table
-		// showTableCpuUtilizationForAllVms(finishTime, veList);
-		showTableRamUtilizationForAllVms(finishTime, veList);
+		 showTableCpuUtilizationForAllVms(finishTime, veList);
+		// showTableRamUtilizationForAllVms(finishTime, veList);
 
 		// output JSON File
 		outputTableAsJSON(finishedCloudlets, rim, ram, rwm, config);

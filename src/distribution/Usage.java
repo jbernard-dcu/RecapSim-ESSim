@@ -30,7 +30,11 @@ public class Usage {
 	}
 
 	public double sampleUsage(String componentId, loadMode mode) {
+		return getDistribution(componentId, mode).sample();
 
+	}
+
+	public ContinuousDistribution getDistribution(String componentId, loadMode mode) {
 		String key = componentId + mode;
 
 		if (!dist.containsKey(key)) {
@@ -53,12 +57,7 @@ public class Usage {
 
 		}
 
-		return dist.get(key).sample();
-
-	}
-
-	public ContinuousDistribution getDistribution(String componentId, loadMode mode) {
-		return dist.get(componentId + mode);
+		return dist.get(key);
 	}
 
 }
