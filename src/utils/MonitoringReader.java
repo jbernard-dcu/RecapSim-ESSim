@@ -212,7 +212,7 @@ public class MonitoringReader {
 			for (int i = 0; i < res.get(key).intValue(); i++) {
 				s += "o";
 			}
-			TxtUtils.print(Math.round(key * 1000.) / 1000. + " " + s, waitingTimeMillis);
+			Print.print(Math.round(key * 1000.) / 1000. + " " + s, waitingTimeMillis);
 		}
 	}
 

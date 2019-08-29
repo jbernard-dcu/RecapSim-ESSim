@@ -153,15 +153,6 @@ public class TxtUtils {
 				(source.substring(start).contains(separator)) ? source.indexOf(separator, start) : source.length());
 	}
 
-	public static void print(String value, long waitingTimeMillis) {
-		System.out.println(value);
-		try {
-			Thread.sleep(waitingTimeMillis);
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		}
-	}
-
 	public static List<List<Object>> mergeWorkloadsData(WorkloadReader w, WorkloadReader r) {
 		List<List<Object>> requestsW;
 		List<List<Object>> requestsR;

@@ -14,6 +14,15 @@ import synthetic.Shard;
 
 public class Print {
 	
+	public static void print(String value, long waitingTimeMillis) {
+		System.out.println(value);
+		try {
+			Thread.sleep(waitingTimeMillis);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+	}
+	
 	public static <T> void printMapMonitoring(TreeMap<Double,List<T>> map) {
 		for(double key:map.keySet()) {
 			System.out.printf("%8s %1s %30s", String.format("%.2f", key)," ",map.get(key).toString()+"\n");

@@ -1,8 +1,6 @@
 package distribution;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 
 import utils.MonitoringReader;
 import utils.TxtUtils;
