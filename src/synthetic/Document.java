@@ -5,7 +5,6 @@ import java.util.HashMap;
 import java.util.List;
 
 import eu.recap.sim.models.WorkloadModel.Request;
-import main.Launcher;
 
 public class Document {
 
@@ -60,7 +59,7 @@ public class Document {
 		// actually)
 		// https://www.compose.com/articles/how-scoring-works-in-elasticsearch/
 
-		List<Long> qTerms = Launcher.unparse(request.getSearchContent());
+		List<Long> qTerms = SynthUtils.unparse(request.getSearchContent());
 
 		// Calculation of the query normalization and coordination factors
 		double queryNorm = 0;

@@ -5,18 +5,20 @@ import java.util.List;
 
 import org.apache.commons.math3.distribution.EnumeratedDistribution;
 
+import synthetic.SynthUtils;
+
 public class Test_cache {
 
 	public static void main(String[] args) {
 
-		EnumeratedDistribution<Long> dist = new EnumeratedDistribution<Long>(Launcher.ZipfDist(100, 1 / 3.));
+		EnumeratedDistribution<Long> dist = new EnumeratedDistribution<Long>(SynthUtils.ZipfDist(100, 1 / 3.));
 
 		List<ShardSim> shardBase = new ArrayList<ShardSim>();
 		for (int shard = 0; shard < 9; shard++) {
 			shardBase.add(new ShardSim());
 		}
 
-		EnumeratedDistribution<Long> shardDist = new EnumeratedDistribution<Long>(Launcher.UnifDist(shardBase.size()));
+		EnumeratedDistribution<Long> shardDist = new EnumeratedDistribution<Long>(SynthUtils.UnifDist(shardBase.size()));
 
 		int c = 0;
 		int nc = 0;

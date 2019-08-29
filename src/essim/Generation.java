@@ -34,6 +34,7 @@ import eu.recap.sim.models.WorkloadModel.Workload;
 import main.Launcher;
 import synthetic.Document;
 import synthetic.Shard;
+import synthetic.SynthUtils;
 import utils.TxtUtils;
 import utils.WorkloadReader;
 import utils.TxtUtils.loadMode;
@@ -175,7 +176,7 @@ public final class Generation {
 		List<Long> timeSequence = new ArrayList<Long>();
 		timeSequence.add(startTime);
 		for (int rang = 1; rang < NB_TERMSET; rang++) {
-			timeSequence.add(timeSequence.get(rang - 1) + Launcher.getNextTime());
+			timeSequence.add(timeSequence.get(rang - 1) + SynthUtils.getNextTime());
 		}
 
 		/*
@@ -212,7 +213,7 @@ public final class Generation {
 		/*
 		 * Creation of Requests
 		 */
-		List<Request.Builder> buildersRequests = Launcher.buildersRequests(termDist);
+		List<Request.Builder> buildersRequests = SynthUtils.buildersRequests(termDist);
 		List<Request> requests = new ArrayList<Request>();
 		int time = 0;
 		// request.time and request.applicationId are set here
@@ -227,7 +228,7 @@ public final class Generation {
 			/*
 			 * Data nodes destinations for the request
 			 */
-			List<Long> searchContent = Launcher.unparse(request.getSearchContent());
+			List<Long> searchContent = SynthUtils.unparse(request.getSearchContent());
 
 			System.out.println("-------------------------------------------------");
 			System.out.println("Search content:" + searchContent.toString());

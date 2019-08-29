@@ -1,13 +1,8 @@
 package main;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
-import org.apache.commons.math3.distribution.EnumeratedDistribution;
-import org.apache.commons.math3.distribution.ExponentialDistribution;
-import org.apache.commons.math3.distribution.ZipfDistribution;
 import org.apache.commons.math3.util.Pair;
 
 import essim.ESSim;
