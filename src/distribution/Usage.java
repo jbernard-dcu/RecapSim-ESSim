@@ -39,13 +39,13 @@ public class Usage {
 	public Usage init() {
 		List<String> componentIds = Stream.iterate(3, n -> n + 1).limit(nbNodes).map(s -> "" + s)
 				.collect(Collectors.toList());
-		
-		for(String compId:componentIds) {
-			for(loadMode mode:loadMode.values()) {
-				getDistribution(compId,mode);
+
+		for (String compId : componentIds) {
+			for (loadMode mode : loadMode.values()) {
+				getDistribution(compId, mode);
 			}
 		}
-		
+
 		return this;
 	}
 
@@ -64,8 +64,8 @@ public class Usage {
 			case NetworkSent:
 			case CpuLoad:
 				double[] params = mReader.getParamsDist(precision);
+				mReader = null;
 				dist.put(key, new NormalDistr(mult * params[0], mult * params[1]));
-				System.gc();
 				break;
 			default:
 				break;

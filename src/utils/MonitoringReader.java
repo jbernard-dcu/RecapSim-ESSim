@@ -17,15 +17,6 @@ public class MonitoringReader {
 	private int nbNodes;
 	private List<List<Object>> data;
 
-	public static void main(String[] args) {
-		MonitoringReader mReader = MonitoringReader.create(9, 121, typeData.MemoryUsage).filter(loadMode.WRITE);
-
-		List<Double> dataset = (List<Double>) (List<?>) mReader.getData().get(2);
-
-		double precision = 1E-3;
-		MonitoringReader.getFrequencyDist(dataset, precision);
-	}
-
 	/**
 	 * Constructor to build the data from specified arguments
 	 * 
@@ -130,6 +121,7 @@ public class MonitoringReader {
 		List<List<Object>> validRequest = WorkloadReader.create(nbNodes, mode, -1).getData();
 		long startTime = (Long) validRequest.get(0).get(0);
 		long endTime = (Long) validRequest.get(0).get(validRequest.get(0).size() - 1);
+		validRequest = null;
 
 		// clean all values out of specified bounds
 		int time = 0;

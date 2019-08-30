@@ -738,7 +738,7 @@ public final class Generation {
 		return dnBuilder;
 	}
 
-	private static Component.Builder createShardComponent(String componentName, String componentId, String nodeId) {
+	static Component.Builder createShardComponent(String componentName, String componentId, String nodeId) {
 		Component.Builder shard = Component.newBuilder();
 		shard.setComponentName(componentName);
 		shard.setComponentId(componentId);
