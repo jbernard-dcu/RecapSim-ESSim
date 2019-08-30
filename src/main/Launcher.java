@@ -63,7 +63,7 @@ public class Launcher {
 		int startw = 10;
 		int startr = 0;
 
-		int nbRequest = 270 ;
+		int nbRequest = 100;
 		int start = startr;
 
 		Workload workload = Generation.GenerateYCSBWorkload(appLandscape, start, nbRequest);

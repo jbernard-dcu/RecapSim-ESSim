@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.cloudbus.cloudsim.distributions.ContinuousDistribution;
 import org.cloudbus.cloudsim.utilizationmodels.UtilizationModel;
 import org.cloudbus.cloudsim.utilizationmodels.UtilizationModelDynamic;
 import org.cloudbus.cloudsim.utilizationmodels.UtilizationModelFull;
@@ -27,6 +26,7 @@ import eu.recap.sim.helpers.RecapCloudletsTableBuilder;
 import eu.recap.sim.models.ApplicationModel.Application.Component.Api;
 import eu.recap.sim.models.InfrastructureModel.Link;
 import eu.recap.sim.models.WorkloadModel.Request;
+import utils.Print;
 import utils.TxtUtils;
 import utils.TxtUtils.loadMode;
 import utils.TxtUtils.typeData;
@@ -109,9 +109,9 @@ public class ESSim extends RecapSim {
 			// Getting the type of request
 			String type = ModelHelpers.getRequestTask(rwm.getDevicesList(), originDeviceId, requestId).getType();
 			loadMode mode = null;
-			if (type.contentEquals("INSERT") || type.equals("UPDATE"))
+			if (type.equals("INSERT") || type.equals("UPDATE"))
 				mode = loadMode.WRITE;
-			if (type.contentEquals("READ"))
+			if (type.equals("READ"))
 				mode = loadMode.READ;
 
 			// UtilizationModel for CPU

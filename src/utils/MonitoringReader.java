@@ -127,7 +127,7 @@ public class MonitoringReader {
 	 */
 	public MonitoringReader filter(loadMode mode) {
 
-		List<List<Object>> validRequest = WorkloadReader.create(nbNodes, mode).getData();
+		List<List<Object>> validRequest = WorkloadReader.create(nbNodes, mode, -1).getData();
 		long startTime = (Long) validRequest.get(0).get(0);
 		long endTime = (Long) validRequest.get(0).get(validRequest.get(0).size() - 1);
 

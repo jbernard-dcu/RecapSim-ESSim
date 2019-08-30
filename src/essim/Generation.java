@@ -35,6 +35,7 @@ import main.Launcher;
 import synthetic.Document;
 import synthetic.Shard;
 import synthetic.SynthUtils;
+import utils.Print;
 import utils.TxtUtils;
 import utils.WorkloadReader;
 import utils.TxtUtils.loadMode;
@@ -307,26 +308,11 @@ public final class Generation {
 
 		long startTime = System.currentTimeMillis();
 
-		WorkloadReader wReaderW = WorkloadReader.create(nbDataNodes, loadMode.WRITE);
-		WorkloadReader wReaderR = WorkloadReader.create(nbDataNodes, loadMode.READ);
+		// Depending on the value of nbRequest, we can in fact end up with less than nbRequest requests
+		WorkloadReader wReaderW = WorkloadReader.create(nbDataNodes, loadMode.WRITE, nbRequest/2);
+		WorkloadReader wReaderR = WorkloadReader.create(nbDataNodes, loadMode.READ, nbRequest/2);
 
 		List<List<Object>> validRequest = TxtUtils.mergeWorkloadsData(wReaderW, wReaderR);
-
-		// reducing the requestSet if necessary
-		nbRequest = Math.min(nbRequest, validRequest.get(0).size() - start);
-		if (start >= 0 && nbRequest > 0) {
-			List<List<Object>> reducedValidRequest = new ArrayList<List<Object>>();
-			for (int field = 0; field < validRequest.size(); field++) {
-				reducedValidRequest.add(new ArrayList<>());
-			}
-			for (int time = start; time < start + nbRequest; time++) {
-				for (int field = 0; field < validRequest.size(); field++) {
-					reducedValidRequest.get(field).add(validRequest.get(field).get(time));
-				}
-			}
-			validRequest = reducedValidRequest;
-		}
-		// */
 
 		// Calculating frequency distribution
 		List<Integer> nodeIds = new ArrayList<Integer>();

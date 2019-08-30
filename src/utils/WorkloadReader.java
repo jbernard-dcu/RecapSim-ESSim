@@ -19,8 +19,12 @@ public class WorkloadReader {
 	private loadMode mode;
 	private List<List<Object>> data;
 
-	private WorkloadReader(int nbNodes, loadMode mode) {
+	private WorkloadReader(int nbNodes, loadMode mode, int nbRequest) {
 		this.mode = mode;
+
+		// Checking that nbRequest is positive
+		if (nbRequest <= 0)
+			nbRequest = Integer.MAX_VALUE;
 
 		// Building the filepath
 		String path = "/elasticsearch_nodes-" + nbNodes + "_replication-3/nodes-" + nbNodes
@@ -66,23 +70,23 @@ public class WorkloadReader {
 
 			long previousDate = 0;
 
-			while ((line = bufferedReader.readLine()) != null) {
+			// Building the list of wanted request types
+			List<String> requestTypes = Arrays.asList("READ", "INSERT", "UPDATE");
+
+			while ((line = bufferedReader.readLine()) != null && validRequest.get(0).size() < nbRequest) {
 
 				if (line.startsWith("2018") && !line.contains("Thread") && line.contains("[")) {
 
 					// Date
-					int start = 1;
 					String stringDate = line.substring(0, 23);
 					long addDate = TxtUtils.readTimeWorkload(stringDate);
 
 					// If first value, set duration to 10 000
 					long duration = (previousDate != 0) ? addDate - previousDate : 10_000;
 
-					// Building the list of wanted request types
-					List<String> requestTypes = Arrays.asList("READ", "INSERT", "UPDATE");
-
 					// Request specs and add all
-					while (start > 0) {
+					int start = 1;
+					while (start > 0 && validRequest.get(0).size() < nbRequest) {
 						start = line.indexOf("[", start) + 1;
 
 						SpecRequest addSpecs = new SpecRequest(TxtUtils.getWord(line, start, "]"));
@@ -141,8 +145,8 @@ public class WorkloadReader {
 
 	}
 
-	public static WorkloadReader create(int nbNodes, loadMode mode) {
-		return new WorkloadReader(nbNodes, mode);
+	public static WorkloadReader create(int nbNodes, loadMode mode, int nbRequest) {
+		return new WorkloadReader(nbNodes, mode, nbRequest);
 	}
 
 	public List<List<Object>> getData() {
@@ -151,6 +155,10 @@ public class WorkloadReader {
 
 	public loadMode getMode() {
 		return this.mode;
+	}
+
+	public int getNbRequests() {
+		return data.get(0).size();
 	}
 
 	/**

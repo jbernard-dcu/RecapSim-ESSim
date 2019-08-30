@@ -65,6 +65,7 @@ public class Usage {
 			case CpuLoad:
 				double[] params = mReader.getParamsDist(precision);
 				dist.put(key, new NormalDistr(mult * params[0], mult * params[1]));
+				System.gc();
 				break;
 			default:
 				break;
